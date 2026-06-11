@@ -1,0 +1,563 @@
+# PackWrite test suite.
+#
+# A self-contained, filesystem-isolated harness exercising the library modules
+# directly (the same functions the CLI delegates to). It needs no network, no API
+# key, and no global state: AI calls go through the fake-injection seam.
+#
+# Run with:
+#   kujo run tests/packwrite_test.kujo
+# Exits non-zero if any assertion fails.
+#
+# NOTE: the built-in `test "..." {}` framework cannot see file-level imports on
+# the current runtime, so this hand-rolled harness is used instead.
+
+from src.util import truthy, has_substr, has_extension, base_of, parent_of
+from src.errors import is_ok, err_msg
+from src.config import config_defaults, config_load, config_read_toml, config_resolve
+from src.prompt import prompt_resolve, prompt_read, absolutize
+from src.repo_context import context_collect, is_excluded, looks_secret, included
+from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, ai_build_options
+from src.pack import pack_parse, pack_parse_with_meta, pack_validate_manifest, pack_apply, safe_target, pack_guard_overwrite, extract_json
+from src.validate import validate_run, extract_phase_refs, required_files
+
+mut passed := 0
+mut failed := 0
+
+func check(cond, name) {
+    if cond == true {
+        passed = passed + 1
+    } else {
+        failed = failed + 1
+        print("  FAIL: " + name)
+    }
+}
+
+func sh(cmd) {
+    return execute_status(cmd)
+}
+
+WORK := join_path(env_or("TMPDIR", "/tmp"), "packwrite_selftest")
+
+func setup() {
+    sh("rm -rf " + WORK)
+    create_dir(WORK)
+    write_file(join_path(WORK, "MEGA_PROMPT.md"), "# Demo\n\nBuild a thing.\n")
+    write_file(join_path(WORK, "README.md"), "# Demo Project\n\nA demo for tests.\n")
+    write_file(join_path(WORK, ".env"), "SECRET=top\n")
+    write_file(join_path(WORK, "server.key"), "PRIVATE\n")
+    create_dir(join_path(WORK, "src"))
+    write_file(join_path(WORK, "src/main.txt"), "x\n")
+}
+
+func teardown() {
+    sh("rm -rf " + WORK)
+}
+
+# ---------------------------------------------------------------------------
+# A complete, valid pack manifest, built programmatically and serialized so the
+# parser round-trips it.
+# ---------------------------------------------------------------------------
+
+func phase_content(label) {
+    mut c := "# Phase " + label + "\n\n"
+    c = c + "## Goal\nDo the thing.\n\n"
+    c = c + "## Read before starting\n- agent/MASTER.md\n\n"
+    c = c + "## Scope\n- a\n\n"
+    c = c + "## Out of scope\n- b\n\n"
+    c = c + "## Implementation notes\nNotes here.\n\n"
+    c = c + "## Acceptance criteria\n- [ ] one\n- [ ] two\n\n"
+    c = c + "## Suggested checks\n- run it\n\n"
+    c = c + "## Handoff requirements\nUpdate HANDOFF.\n"
+    return c
+}
+
+func make_manifest() {
+    mut files := []
+    files = push(files, {"path": "agent/MASTER.md", "content": "# MASTER\n\nStable intent. Assumptions documented.\n"})
+    todo := "# TODO\n\n- [ ] Phase 00: brief\n  - phases/00-project-brief.md\n- [ ] Phase 01: a\n  - phases/01-alpha.md\n- [ ] Phase 02: b\n  - phases/02-beta.md\n- [ ] Phase 03: c\n  - phases/03-gamma.md\n- [ ] Phase 04: d\n  - phases/04-delta.md\n- [ ] Phase 05: e\n  - phases/05-epsilon.md\n"
+    files = push(files, {"path": "agent/TODO.md", "content": todo})
+    handoff := "# Handoff\n\n## Current Status\nNone.\n\n## Completed Phases\nNone.\n\n## Files Changed\nNone.\n\n## Commands Run\nNone.\n\n## Known Issues\nNone.\n\n## Next Agent Notes\nStart phase 00.\n"
+    files = push(files, {"path": "agent/HANDOFF.md", "content": handoff})
+    decisions := "# Decisions\n\n## Confirmed Decisions\nx\n\n## Open Decisions\ny\n\n## Decision Log\nNone.\n"
+    files = push(files, {"path": "agent/DECISIONS.md", "content": decisions})
+    checklist := "# Review Checklist\n\n## Scope\n- [ ] a\n- [ ] b\n\n## Architecture\n- [ ] c\n- [ ] d\n\n## Tests\n- [ ] e\n- [ ] f\n"
+    files = push(files, {"path": "agent/REVIEW_CHECKLIST.md", "content": checklist})
+    files = push(files, {"path": "agent/DEEPSEEK_START.md", "content": "# DeepSeek\n\nWork autonomously through all phases.\n"})
+    files = push(files, {"path": "agent/CODEX_REVIEW_PROMPT.md", "content": "# Codex\n\nScore and produce a repair checklist.\n"})
+    files = push(files, {"path": "agent/phases/00-project-brief.md", "content": phase_content("00: Brief")})
+    files = push(files, {"path": "agent/phases/01-alpha.md", "content": phase_content("01: Alpha")})
+    files = push(files, {"path": "agent/phases/02-beta.md", "content": phase_content("02: Beta")})
+    files = push(files, {"path": "agent/phases/03-gamma.md", "content": phase_content("03: Gamma")})
+    files = push(files, {"path": "agent/phases/04-delta.md", "content": phase_content("04: Delta")})
+    files = push(files, {"path": "agent/phases/05-epsilon.md", "content": phase_content("05: Epsilon")})
+    return to_json_pretty({"files": files})
+}
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+func test_config() {
+    d := config_defaults()
+    check(d["output_dir"] == "agent", "default output_dir is agent")
+    check(d["prompt_file"] == "MEGA_PROMPT.md", "default prompt_file")
+    check(d["pack_min_phases"] == 6, "default min phases")
+
+    # Project TOML overrides defaults; a flag overrides the TOML.
+    write_file(join_path(WORK, "packwrite.toml"), "[output]\ndir = \"out\"\n\n[model]\nprovider = \"openai\"\nmodel = \"gpt-x\"\n")
+    loaded := config_load({}, WORK)
+    check(is_ok(loaded), "config_load ok")
+    check(loaded["config"]["output_dir"] == "out", "toml overrides default output_dir")
+    check(loaded["config"]["model_provider"] == "openai", "toml sets provider")
+
+    loaded2 := config_load({"provider": "deepseek", "output": "flagdir"}, WORK)
+    check(loaded2["config"]["model_provider"] == "deepseek", "flag overrides toml provider")
+    check(loaded2["config"]["output_dir"] == "flagdir", "flag overrides toml output_dir")
+    delete_file(join_path(WORK, "packwrite.toml"))
+
+    bad := config_read_toml_setup()
+    check(is_ok(bad) == false, "malformed toml returns error envelope")
+}
+
+func config_read_toml_setup() {
+    p := join_path(WORK, "bad.toml")
+    write_file(p, "this is = = not valid [toml\n")
+    return config_read_toml(p)
+}
+
+func test_prompt() {
+    miss := prompt_resolve("DOES_NOT_EXIST.md", config_defaults(), WORK)
+    check(is_ok(miss) == false, "missing prompt errors")
+    check(has_substr(err_msg(miss), "MEGA_PROMPT.md"), "missing prompt message mentions MEGA_PROMPT.md")
+
+    res := prompt_resolve(null, config_defaults(), WORK)
+    check(is_ok(res), "default prompt resolves")
+    rd := prompt_read(res["path"])
+    check(is_ok(rd), "prompt reads")
+    check(has_substr(rd["text"], "Build a thing"), "prompt text loaded")
+
+    check(absolutize("/abs/x", WORK) == "/abs/x", "absolutize keeps absolute")
+}
+
+func test_repo_context() {
+    check(is_excluded(".env", config_defaults()["repo_exclude"]), ".env excluded")
+    check(is_excluded("server.key", config_defaults()["repo_exclude"]), "*.key excluded")
+    check(looks_secret("id_rsa"), "id_rsa looks secret")
+    check(looks_secret("README.md") == false, "README not secret")
+
+    ctx := context_collect(WORK, config_defaults())
+    rendered := tojoin_names(ctx["summary"]["top_level"])
+    check(has_substr(rendered, "README.md"), "context includes README")
+    check(has_substr(rendered, ".env") == false, "context excludes .env")
+    check(has_substr(rendered, "server.key") == false, "context excludes server.key")
+    check(len(ctx["warnings"]) >= 1, "context warns about secret-looking files")
+    check(ctx["summary"]["mega_prompt"] == "present", "mega prompt detected present")
+}
+
+func tojoin_names(entries) {
+    mut out := ""
+    mut tj_i := 0
+    tj_n := len(entries)
+    while tj_i < tj_n {
+        out = out + entries[tj_i]["name"] + ","
+        tj_i = tj_i + 1
+    }
+    return out
+}
+
+func test_ai_adapter() {
+    cfg := config_defaults()
+    gen := ai_generate("prompt", cfg, {"fake": "HELLO"})
+    check(is_ok(gen), "fake adapter returns ok")
+    check(gen["text"] == "HELLO", "fake adapter passes text through")
+
+    opts := ai_build_options(cfg)
+    check(type(opts["response_format"]) == "dict", "deepseek options include response_format")
+    check(opts["response_format"]["type"] == "json_object", "deepseek options force json_object")
+    check(type(opts["thinking"]) == "dict", "deepseek options include thinking")
+    check(opts["thinking"]["type"] == "disabled", "deepseek thinking disabled by default")
+    check(opts["max_tokens"] == 32000, "deepseek options include max_tokens")
+
+    op := config_defaults()
+    op["model_provider"] := "openai"
+    op_opts := ai_build_options(op)
+    check(has_key(op_opts, "response_format") == 0, "non-deepseek options do not force response_format")
+    check(has_key(op_opts, "thinking") == 0, "non-deepseek options do not force thinking")
+
+    check(resolve_endpoint(cfg) != "", "deepseek preset endpoint resolves")
+    cfg2 := config_defaults()
+    cfg2["model_provider"] := "unknown-x"
+    check(resolve_endpoint(cfg2) == "", "unknown provider has no endpoint")
+    noep := ai_generate("p", cfg2, null)
+    check(is_ok(noep) == false, "no endpoint -> error")
+
+    dp := ai_distillation_prompt("MEGA", "CONTEXT", cfg)
+    check(has_substr(dp, "MEGA"), "distillation prompt embeds mega prompt")
+    check(has_substr(dp, "files"), "distillation prompt specifies files manifest")
+    check(has_substr(dp, "autonomous") || has_substr(dp, "CONTINUE"), "distillation prompt requests autonomy")
+}
+
+func test_pack_parse() {
+    plain := "{\"files\":[{\"path\":\"agent/x.md\",\"content\":\"hi\"}]}"
+    pplain := pack_parse(plain)
+    check(is_ok(pplain), "plain JSON manifest parses")
+
+    fenced := "```json\n{\"files\":[{\"path\":\"agent/x.md\",\"content\":\"hi\"}]}\n```"
+    ej := extract_json(fenced)
+    check(starts_with(ej, "{"), "extract_json strips fences")
+    p := pack_parse(fenced)
+    check(is_ok(p), "fenced manifest parses (code fences)")
+
+    prose := "Sure! Here is the pack you asked for:\n{\"files\":[{\"path\":\"agent/x.md\",\"content\":\"hi\"}]}\nLet me know if you need changes."
+    pp := pack_parse(prose)
+    check(is_ok(pp), "JSON surrounded by prose parses")
+
+    bad := pack_parse("not json at all")
+    check(is_ok(bad) == false, "invalid JSON fails to parse")
+    check(has_substr(err_msg(bad), "could not be parsed into files"), "invalid JSON message is the canonical one")
+
+    bad_meta := pack_parse_with_meta("not json", {"provider": "deepseek", "model": "deepseek-v4-pro", "finish_reason": "length"})
+    check(is_ok(bad_meta) == false, "invalid JSON with metadata fails")
+    check(has_substr(err_msg(bad_meta), "provider=deepseek"), "parse diagnostics include provider")
+    check(has_substr(err_msg(bad_meta), "model=deepseek-v4-pro"), "parse diagnostics include model")
+    check(has_substr(err_msg(bad_meta), "finish_reason=length"), "parse diagnostics include finish_reason")
+    check(has_substr(err_msg(bad_meta), "truncated") || has_substr(err_msg(bad_meta), "JSON mode"), "parse diagnostics include truncation/json-mode hint")
+
+    nofiles := pack_parse("{\"x\":1}")
+    check(is_ok(nofiles) == false, "missing files key fails")
+    check(has_substr(err_msg(nofiles), "files"), "missing-files message mentions files")
+
+    nocontent := pack_parse("{\"files\":[{\"path\":\"agent/x.md\"}]}")
+    check(is_ok(nocontent) == false, "missing content fails")
+
+    nopath := pack_parse("{\"files\":[{\"content\":\"hi\"}]}")
+    check(is_ok(nopath) == false, "missing path fails")
+
+    notstr := pack_parse("{\"files\":[{\"path\":\"agent/x.md\",\"content\":123}]}")
+    check(is_ok(notstr) == false, "non-string content fails")
+
+    emptyarr := pack_parse("{\"files\":[]}")
+    check(is_ok(emptyarr) == false, "empty files array fails")
+}
+
+func test_apply_bad_path() {
+    cfg := config_defaults()
+    # A well-formed manifest whose path escapes the output dir must fail at apply.
+    bad := pack_parse("{\"files\":[{\"path\":\"/etc/evil.md\",\"content\":\"x\"}]}")
+    check(is_ok(bad), "manifest with absolute path still parses (shape ok)")
+    applied := pack_apply(bad["files"], cfg, WORK, false)
+    check(is_ok(applied) == false, "apply rejects out-of-dir path")
+    check(file_exists("/etc/evil.md") == false, "no file written outside output dir")
+
+    trav := pack_parse("{\"files\":[{\"path\":\"agent/../x.md\",\"content\":\"x\"}]}")
+    appliedt := pack_apply(trav["files"], cfg, WORK, false)
+    check(is_ok(appliedt) == false, "apply rejects traversal path")
+}
+
+func test_manifest_shape_validation() {
+    cfg := config_defaults()
+    parsed := pack_parse(make_manifest())
+    check(is_ok(parsed), "manifest parses for shape validation")
+
+    okv := pack_validate_manifest(parsed["files"], cfg, WORK)
+    check(is_ok(okv), "valid manifest passes pack_validate_manifest")
+
+    dup := [
+        {"path": "agent/MASTER.md", "content": "a"},
+        {"path": "agent/MASTER.md", "content": "b"}
+    ]
+    dupv := pack_validate_manifest(dup, cfg, WORK)
+    check(is_ok(dupv) == false, "duplicate path rejected by manifest validator")
+
+    missing := [
+        {"path": "agent/MASTER.md", "content": "x"}
+    ]
+    missv := pack_validate_manifest(missing, cfg, WORK)
+    check(is_ok(missv) == false, "missing required files rejected by manifest validator")
+
+    todo_bad := [
+        {"path": "agent/MASTER.md", "content": "x"},
+        {"path": "agent/TODO.md", "content": "- [ ] Phase 01\n  - phases/01-alpha.md\n"},
+        {"path": "agent/HANDOFF.md", "content": "# Handoff\n\n## Current Status\n\n## Completed Phases\n\n## Files Changed\n\n## Commands Run\n\n## Known Issues\n\n## Next Agent Notes\n"},
+        {"path": "agent/DECISIONS.md", "content": "# Decisions\n\n## Confirmed Decisions\n\n## Open Decisions\n\n## Decision Log\n"},
+        {"path": "agent/REVIEW_CHECKLIST.md", "content": "# Checklist\n- [ ] a\n- [ ] b\n- [ ] c\n- [ ] d\n- [ ] e\n"},
+        {"path": "agent/DEEPSEEK_START.md", "content": "autonomous\n"},
+        {"path": "agent/CODEX_REVIEW_PROMPT.md", "content": "score and repair\n"},
+        {"path": "agent/phases/00-project-brief.md", "content": phase_content("00: Brief")}
+    ]
+    tbv := pack_validate_manifest(todo_bad, cfg, WORK)
+    check(is_ok(tbv) == false, "manifest validator rejects TODO phase refs that are missing")
+}
+
+func test_no_partial_write_on_invalid_manifest() {
+    root := join_path(WORK, "partialtest")
+    create_dir(root)
+    cfg := config_defaults()
+    bad := [
+        {"path": "agent/MASTER.md", "content": "x"},
+        {"path": "agent/MASTER.md", "content": "y"}
+    ]
+    applied := pack_apply(bad, cfg, root, false)
+    check(is_ok(applied) == false, "invalid manifest fails before writing")
+    check(path_is_dir(join_path(root, "agent")) == false, "no partial agent dir written on invalid manifest")
+}
+
+func test_provider_presets() {
+    base := config_defaults()
+    check(resolve_endpoint(base) != "", "deepseek preset resolves")
+    co := config_defaults()
+    co["model_provider"] := "openai"
+    check(resolve_endpoint(co) != "", "openai preset resolves")
+    cl := config_defaults()
+    cl["model_provider"] := "local"
+    check(resolve_endpoint(cl) != "", "local preset resolves")
+
+    # Anthropic is NOT a working preset (adapter is OpenAI-compatible only).
+    ca := config_defaults()
+    ca["model_provider"] := "anthropic"
+    check(resolve_endpoint(ca) == "", "anthropic has no native preset")
+    gen := ai_generate("p", ca, null)
+    check(is_ok(gen) == false, "anthropic without endpoint errors")
+    check(has_substr(err_msg(gen), "OpenAI-compatible"), "anthropic error explains OpenAI-compatible requirement")
+    check(has_substr(err_msg(gen), "not supported natively"), "anthropic error says not supported natively")
+
+    # But an explicit OpenAI-compatible gateway endpoint is honored.
+    cg := config_defaults()
+    cg["model_provider"] := "anthropic"
+    cg["model_endpoint"] := "https://gateway.example/v1/chat/completions"
+    check(resolve_endpoint(cg) == "https://gateway.example/v1/chat/completions", "explicit endpoint overrides for anthropic")
+}
+
+func test_pack_safety() {
+    cfg := config_defaults()
+    abs := safe_target("/etc/passwd", cfg, WORK)
+    check(is_ok(abs) == false, "absolute path rejected")
+    trav := safe_target("agent/../../x", cfg, WORK)
+    check(is_ok(trav) == false, "traversal rejected")
+    escape := safe_target("other/x.md", cfg, WORK)
+    check(is_ok(escape) == false, "path outside output dir rejected")
+    good := safe_target("agent/MASTER.md", cfg, WORK)
+    check(is_ok(good), "in-dir path accepted")
+}
+
+func test_pack_write_and_validate() {
+    cfg := config_defaults()
+    manifest := make_manifest()
+    parsed := pack_parse(manifest)
+    check(is_ok(parsed), "full manifest parses")
+
+    # Dry run writes nothing.
+    dry := pack_apply(parsed["files"], cfg, WORK, true)
+    check(is_ok(dry), "dry run ok")
+    check(path_is_dir(join_path(WORK, "agent")) == false, "dry run wrote no agent dir")
+
+    # Real write.
+    applied := pack_apply(parsed["files"], cfg, WORK, false)
+    check(is_ok(applied), "apply ok")
+    check(applied["phases"] == 6, "six phase files counted")
+    check(file_exists(join_path(WORK, "agent/MASTER.md")), "MASTER written")
+    check(file_exists(join_path(WORK, "agent/phases/01-alpha.md")), "phase written")
+
+    # Overwrite protection.
+    guard := pack_guard_overwrite(cfg, WORK)
+    check(is_ok(guard) == false, "guard refuses existing dir")
+    cfg2 := config_defaults()
+    cfg2["output_overwrite"] := true
+    guard2 := pack_guard_overwrite(cfg2, WORK)
+    check(is_ok(guard2), "guard allows with overwrite")
+
+    # Validation passes on the good pack.
+    out_root := join_path(WORK, "agent")
+    v := validate_run(out_root, cfg)
+    check(truthy(v["ok"]), "valid pack passes validation")
+    check(len(v["errors"]) == 0, "no errors on good pack")
+
+    # Break a TODO link by removing a referenced phase file.
+    delete_file(join_path(out_root, "phases/03-gamma.md"))
+    v2 := validate_run(out_root, cfg)
+    check(truthy(v2["ok"]) == false, "broken phase link fails validation")
+    check(link_error_present(v2["errors"]), "error names the missing phase file")
+
+    # Missing dir.
+    v3 := validate_run(join_path(WORK, "nope"), cfg)
+    check(truthy(v3["ok"]) == false, "missing pack dir fails validation")
+}
+
+func link_error_present(errors) {
+    mut le_i := 0
+    le_n := len(errors)
+    while le_i < le_n {
+        if has_substr(errors[le_i], "03-gamma.md") {
+            return true
+        }
+        le_i = le_i + 1
+    }
+    return false
+}
+
+func test_phase_refs() {
+    refs := extract_phase_refs("see phases/01-alpha.md and `phases/02-beta.md`.")
+    check(len(refs) == 2, "extracts two phase refs")
+}
+
+func list_has_substr(items, needle) {
+    mut lh_i := 0
+    lh_n := len(items)
+    while lh_i < lh_n {
+        if has_substr(items[lh_i], needle) {
+            return true
+        }
+        lh_i = lh_i + 1
+    }
+    return false
+}
+
+# Global < project < flags layering, exercised via the injectable global path seam.
+func test_global_layering() {
+    gpath := join_path(WORK, "global.toml")
+    ppath := join_path(WORK, "packwrite.toml")
+    write_file(gpath, "[model]\nprovider = \"global-p\"\nmodel = \"global-m\"\n\n[output]\ndir = \"globaldir\"\n")
+    write_file(ppath, "[model]\nprovider = \"proj-p\"\n")
+
+    res := config_resolve({}, WORK, gpath)
+    check(is_ok(res), "config_resolve ok with global+project")
+    check(res["config"]["model_provider"] == "proj-p", "project provider overrides global")
+    check(res["config"]["model_model"] == "global-m", "global model survives when project omits it")
+    check(res["config"]["output_dir"] == "globaldir", "global output_dir survives when project omits it")
+
+    res2 := config_resolve({"provider": "flag-p"}, WORK, gpath)
+    check(res2["config"]["model_provider"] == "flag-p", "flag overrides both global and project")
+
+    # No global file -> defaults still layer under project.
+    res3 := config_resolve({}, WORK, join_path(WORK, "nope-global.toml"))
+    check(res3["config"]["model_provider"] == "proj-p", "missing global file is harmless")
+
+    delete_file(gpath)
+    delete_file(ppath)
+}
+
+# Config keys must actually change behavior (this is what the review caught missing).
+func test_config_takes_effect() {
+    full := config_defaults()
+    rf_full := required_files(full)
+    check(len(rf_full) == 7, "all 7 files required by default")
+
+    off := config_defaults()
+    off["pack_include_deepseek"] := false
+    off["pack_include_codex"] := false
+    off["pack_include_checklist"] := false
+    rf_off := required_files(off)
+    check(len(rf_off) == 4, "toggled-off optional files are not required")
+    check(list_has_substr(rf_off, "DEEPSEEK_START.md") == false, "DEEPSEEK not required when disabled")
+
+    dp_full := ai_distillation_prompt("M", "C", full)
+    check(has_substr(dp_full, "DEEPSEEK_START.md"), "distillation asks for DEEPSEEK when enabled")
+    dp_off := ai_distillation_prompt("M", "C", off)
+    check(has_substr(dp_off, "DEEPSEEK_START.md") == false, "distillation omits DEEPSEEK when disabled")
+    check(has_substr(dp_off, "CODEX_REVIEW_PROMPT.md") == false, "distillation omits CODEX when disabled")
+
+    # repo_include allow-list gates top-level entries.
+    check(included("README.md", ["README.md"]), "included: name in allow-list")
+    check(included("src", ["README.md"]) == false, "included: name not in allow-list")
+    check(included("anything", []), "included: empty allow-list includes everything")
+
+    only := config_defaults()
+    only["repo_include"] := ["README.md"]
+    ctx := context_collect(WORK, only)
+    names := tojoin_names(ctx["summary"]["top_level"])
+    check(has_substr(names, "README.md"), "allow-list keeps README.md")
+    check(has_substr(names, "MEGA_PROMPT.md") == false, "allow-list drops non-listed entries")
+}
+
+# --overwrite must produce exactly the manifest's files (orphans pruned).
+func test_overwrite_prunes() {
+    ow := join_path(WORK, "owtest")
+    create_dir(ow)
+    cfg := config_defaults()
+    parsed := pack_parse(make_manifest())
+    a1 := pack_apply(parsed["files"], cfg, ow, false)
+    check(is_ok(a1), "initial pack_apply ok")
+
+    # Plant orphans a fresh manifest will not write.
+    write_file(join_path(ow, "agent/phases/99-orphan.md"), "stale\n")
+    write_file(join_path(ow, "agent/STALE_ROOT.md"), "stale\n")
+    check(file_exists(join_path(ow, "agent/phases/99-orphan.md")), "orphan planted")
+
+    a2 := pack_apply(parsed["files"], cfg, ow, false)
+    check(is_ok(a2), "second pack_apply ok")
+    check(a2["pruned"] == 2, "two orphan files pruned")
+    check(file_exists(join_path(ow, "agent/phases/99-orphan.md")) == false, "orphan phase removed")
+    check(file_exists(join_path(ow, "agent/STALE_ROOT.md")) == false, "orphan root file removed")
+    check(file_exists(join_path(ow, "agent/MASTER.md")), "legit file still present after prune")
+
+    # Dry run never prunes or writes.
+    write_file(join_path(ow, "agent/STALE_AGAIN.md"), "stale\n")
+    a3 := pack_apply(parsed["files"], cfg, ow, true)
+    check(a3["pruned"] == 0, "dry run prunes nothing")
+    check(file_exists(join_path(ow, "agent/STALE_AGAIN.md")), "dry run leaves orphan untouched")
+}
+
+# Validation flags prompts that don't say what they're for.
+func test_validation_content_cues() {
+    cc := join_path(WORK, "cuetest")
+    create_dir(cc)
+    cfg := config_defaults()
+    parsed := pack_parse(make_manifest())
+    pack_apply(parsed["files"], cfg, cc, false)
+    out_root := join_path(cc, "agent")
+
+    # Good pack (fixture prompts have autonomy + score/repair cues).
+    vgood := validate_run(out_root, cfg)
+    check(truthy(vgood["ok"]), "good pack passes")
+    check(list_has_substr(vgood["warnings"], "autonomy cue") == false, "no autonomy warning on good pack")
+
+    # Weaken the prompts.
+    delete_file(join_path(out_root, "DEEPSEEK_START.md"))
+    write_file(join_path(out_root, "DEEPSEEK_START.md"), "Implement the phases.\n")
+    delete_file(join_path(out_root, "CODEX_REVIEW_PROMPT.md"))
+    write_file(join_path(out_root, "CODEX_REVIEW_PROMPT.md"), "Please look at the code.\n")
+    vweak := validate_run(out_root, cfg)
+    check(list_has_substr(vweak["warnings"], "autonomy cue"), "weak DEEPSEEK prompt warns")
+    check(list_has_substr(vweak["warnings"], "score and a repair"), "weak CODEX prompt warns")
+
+    # A pack generated without the optional files passes when they're disabled.
+    off := config_defaults()
+    off["pack_include_deepseek"] := false
+    off["pack_include_codex"] := false
+    off["pack_include_checklist"] := false
+    delete_file(join_path(out_root, "DEEPSEEK_START.md"))
+    delete_file(join_path(out_root, "CODEX_REVIEW_PROMPT.md"))
+    delete_file(join_path(out_root, "REVIEW_CHECKLIST.md"))
+    voff := validate_run(out_root, off)
+    check(truthy(voff["ok"]), "pack without disabled optional files still validates")
+}
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
+
+setup()
+test_config()
+test_prompt()
+test_repo_context()
+test_ai_adapter()
+test_provider_presets()
+test_pack_parse()
+test_apply_bad_path()
+test_pack_safety()
+test_pack_write_and_validate()
+test_manifest_shape_validation()
+test_no_partial_write_on_invalid_manifest()
+test_phase_refs()
+test_global_layering()
+test_config_takes_effect()
+test_overwrite_prunes()
+test_validation_content_cues()
+teardown()
+
+print("")
+print("packwrite tests: " + "${passed}" + " passed, " + "${failed}" + " failed")
+if failed > 0 {
+    exit(1)
+}
+exit(0)

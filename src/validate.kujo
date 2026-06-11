@@ -1,0 +1,358 @@
+# PackWrite :: validate
+#
+# Deterministic pack validation. No AI involved. Produces
+#   {"ok": bool, "errors": [...], "warnings": [...]}
+# where any error makes the pack unusable and warnings flag quality concerns.
+
+from src.util import truthy, has_substr, lines_of, base_of, str_find_from
+from src.repo_context import looks_secret
+
+# Required files depend on the pack_include_* config: a file that was intentionally
+# excluded from generation must not be demanded by validation.
+export func required_files(cfg) {
+    mut req := ["MASTER.md", "TODO.md", "HANDOFF.md", "DECISIONS.md"]
+    if truthy(cfg["pack_include_checklist"]) {
+        req = push(req, "REVIEW_CHECKLIST.md")
+    }
+    if truthy(cfg["pack_include_deepseek"]) {
+        req = push(req, "DEEPSEEK_START.md")
+    }
+    if truthy(cfg["pack_include_codex"]) {
+        req = push(req, "CODEX_REVIEW_PROMPT.md")
+    }
+    return req
+}
+
+# Autonomy cues that a DEEPSEEK_START.md should contain (matched case-insensitively).
+func has_autonomy_cue(text) {
+    low := to_lower(text)
+    if has_substr(low, "autonomous") {
+        return true
+    }
+    if has_substr(low, "without waiting") {
+        return true
+    }
+    if has_substr(low, "without human approval") {
+        return true
+    }
+    if has_substr(low, "do not wait") {
+        return true
+    }
+    if has_substr(low, "continue automatically") {
+        return true
+    }
+    if has_substr(low, "continue to the next") {
+        return true
+    }
+    return false
+}
+
+# Review cues that a CODEX_REVIEW_PROMPT.md should contain: ask for a score AND a
+# repair/fix checklist.
+func has_review_cue(text) {
+    low := to_lower(text)
+    has_score := has_substr(low, "score")
+    has_repair := has_substr(low, "repair") || has_substr(low, "fix")
+    return has_score && has_repair
+}
+
+func read_or_empty(path) {
+    if file_exists(path) == false {
+        return ""
+    }
+    if path_is_dir(path) {
+        return ""
+    }
+    return read_file(path)
+}
+
+# Collect "phases/<name>.md" basenames referenced anywhere in `text`. Purely
+# char-based (see util str_find_from) so multi-byte chars don't drift offsets.
+export func extract_phase_refs(text) {
+    mut refs := []
+    needle := "phases/"
+    nlen := len(needle)
+    mut pos := str_find_from(text, needle, 0)
+    mut guard := 0
+    while pos >= 0 && guard < 1000 {
+        tok := read_token_at(text, pos + nlen)
+        if ends_with(tok, ".md") {
+            refs = push(refs, tok)
+        }
+        pos = str_find_from(text, needle, pos + nlen)
+        guard = guard + 1
+    }
+    return refs
+}
+
+# Read a path token from `start` (char index) up to the first delimiter.
+func read_token_at(text, start) {
+    mut out := ""
+    mut rt_i := start
+    while substring(text, rt_i, rt_i + 1) != "" {
+        ch := substring(text, rt_i, rt_i + 1)
+        if ch == " " || ch == "\n" || ch == "\t" || ch == "`" || ch == ")" || ch == "(" || ch == "\r" || ch == "\"" {
+            return out
+        }
+        out = out + ch
+        rt_i = rt_i + 1
+    }
+    return out
+}
+
+# Count "- [ ]" / "- [x]" checkbox lines in text.
+func count_checkboxes(text) {
+    ls := lines_of(text)
+    mut count := 0
+    mut cb_i := 0
+    cb_n := len(ls)
+    while cb_i < cb_n {
+        t := trim(ls[cb_i])
+        if starts_with(t, "- [ ]") || starts_with(t, "- [x]") || starts_with(t, "- [X]") {
+            count = count + 1
+        }
+        cb_i = cb_i + 1
+    }
+    return count
+}
+
+func has_placeholder(text) {
+    if has_substr(text, "[phase-name]") {
+        return true
+    }
+    if has_substr(text, "FILL IN") {
+        return true
+    }
+    if has_substr(text, "<placeholder>") {
+        return true
+    }
+    if has_substr(text, "lorem ipsum") {
+        return true
+    }
+    return false
+}
+
+# Validate the pack rooted at `out_root` (absolute path to the /agent dir).
+# `cfg` supplies pack_min_phases. Returns the result envelope.
+export func validate_run(out_root, cfg) {
+    mut errors := []
+    mut warnings := []
+
+    if path_is_dir(out_root) == false {
+        errors = push(errors, "Output pack directory not found: " + out_root)
+        return {"ok": false, "errors": errors, "warnings": warnings}
+    }
+
+    # Required files.
+    req := required_files(cfg)
+    mut rf_i := 0
+    rf_n := len(req)
+    while rf_i < rf_n {
+        p := join_path(out_root, req[rf_i])
+        if file_exists(p) == false {
+            errors = push(errors, "Missing required file: " + cfg["output_dir"] + "/" + req[rf_i])
+        }
+        rf_i = rf_i + 1
+    }
+
+    # phases/ folder.
+    phases_dir := join_path(out_root, "phases")
+    if path_is_dir(phases_dir) == false {
+        errors = push(errors, "Missing required folder: " + cfg["output_dir"] + "/phases")
+    }
+
+    # Section checks for the structured files.
+    errors = check_sections(errors, join_path(out_root, "HANDOFF.md"), ["Current Status", "Completed Phases", "Known Issues", "Next Agent Notes"], "HANDOFF.md")
+    errors = check_sections(errors, join_path(out_root, "DECISIONS.md"), ["Confirmed", "Open", "Log"], "DECISIONS.md")
+    if truthy(cfg["pack_include_checklist"]) {
+        checklist_text := read_or_empty(join_path(out_root, "REVIEW_CHECKLIST.md"))
+        if count_section_headings(checklist_text) < 3 {
+            warnings = push(warnings, "REVIEW_CHECKLIST.md has few sections; it may be too thin to be useful")
+        }
+        if count_checkboxes(checklist_text) < 5 {
+            warnings = push(warnings, "REVIEW_CHECKLIST.md has few concrete checklist items")
+        }
+    }
+
+    # Prompt-content checks: the generated prompts must actually say what they are for.
+    if truthy(cfg["pack_include_deepseek"]) {
+        ds_text := read_or_empty(join_path(out_root, "DEEPSEEK_START.md"))
+        if ds_text != "" && has_autonomy_cue(ds_text) == false {
+            warnings = push(warnings, "DEEPSEEK_START.md does not clearly instruct autonomous, multi-phase execution (no autonomy cue found)")
+        }
+    }
+    if truthy(cfg["pack_include_codex"]) {
+        cx_text := read_or_empty(join_path(out_root, "CODEX_REVIEW_PROMPT.md"))
+        if cx_text != "" && has_review_cue(cx_text) == false {
+            warnings = push(warnings, "CODEX_REVIEW_PROMPT.md does not clearly ask for a score and a repair checklist")
+        }
+    }
+
+    # TODO -> phase link integrity.
+    todo_text := read_or_empty(join_path(out_root, "TODO.md"))
+    refs := extract_phase_refs(todo_text)
+    mut tr_i := 0
+    tr_n := len(refs)
+    while tr_i < tr_n {
+        bn := base_of(refs[tr_i])
+        target := join_path(phases_dir, bn)
+        if file_exists(target) == false {
+            errors = push(errors, "Validation failed: TODO.md references missing phase file " + cfg["output_dir"] + "/phases/" + bn)
+        }
+        tr_i = tr_i + 1
+    }
+
+    # Per-phase checks.
+    presult := check_phases(phases_dir, cfg)
+    errors = concat_lists(errors, presult["errors"])
+    warnings = concat_lists(warnings, presult["warnings"])
+
+    # Placeholder + secret scan across the pack.
+    scanres := scan_pack(out_root, phases_dir)
+    warnings = concat_lists(warnings, scanres["warnings"])
+    errors = concat_lists(errors, scanres["errors"])
+
+    okval := len(errors) == 0
+    return {"ok": okval, "errors": errors, "warnings": warnings}
+}
+
+func check_sections(errors, path, needles, label) {
+    text := read_or_empty(path)
+    if text == "" {
+        return errors
+    }
+    mut cs_i := 0
+    cs_n := len(needles)
+    while cs_i < cs_n {
+        if has_substr(text, needles[cs_i]) == false {
+            errors = push(errors, label + " missing expected section: " + needles[cs_i])
+        }
+        cs_i = cs_i + 1
+    }
+    return errors
+}
+
+func count_section_headings(text) {
+    ls := lines_of(text)
+    mut count := 0
+    mut ch_i := 0
+    ch_n := len(ls)
+    while ch_i < ch_n {
+        if starts_with(trim(ls[ch_i]), "## ") {
+            count = count + 1
+        }
+        ch_i = ch_i + 1
+    }
+    return count
+}
+
+func check_phases(phases_dir, cfg) {
+    mut errors := []
+    mut warnings := []
+    if path_is_dir(phases_dir) == false {
+        return {"errors": errors, "warnings": warnings}
+    }
+    names := list_dir(phases_dir)
+    mut count := 0
+    mut cp_i := 0
+    cp_n := len(names)
+    while cp_i < cp_n {
+        nm := names[cp_i]
+        if ends_with(nm, ".md") {
+            count = count + 1
+            res := check_one_phase(join_path(phases_dir, nm), nm)
+            errors = concat_lists(errors, res["errors"])
+            warnings = concat_lists(warnings, res["warnings"])
+        }
+        cp_i = cp_i + 1
+    }
+    min_p := cfg["pack_min_phases"]
+    if count < min_p {
+        warnings = push(warnings, "Phase count (" + "${count}" + ") is below the recommended minimum (" + "${min_p}" + ")")
+    }
+    if count == 0 {
+        errors = push(errors, "No phase files found under phases/")
+    }
+    return {"errors": errors, "warnings": warnings}
+}
+
+func check_one_phase(path, name) {
+    mut errors := []
+    mut warnings := []
+    text := read_or_empty(path)
+
+    # Core headings are required (errors): a phase without these is not actionable.
+    required_headings := ["## Goal", "## Scope", "## Out of scope", "## Acceptance criteria"]
+    mut ch_i := 0
+    ch_n := len(required_headings)
+    while ch_i < ch_n {
+        if has_substr(text, required_headings[ch_i]) == false {
+            errors = push(errors, "Phase " + name + " missing section: " + required_headings[ch_i])
+        }
+        ch_i = ch_i + 1
+    }
+
+    # Recommended headings (warnings): the distillation prompt mandates these, but a
+    # pack is still usable without them, so don't hard-fail.
+    recommended := ["## Read before starting", "## Implementation notes", "## Suggested checks", "## Handoff requirements"]
+    mut rc_i := 0
+    rc_n := len(recommended)
+    while rc_i < rc_n {
+        if has_substr(text, recommended[rc_i]) == false {
+            warnings = push(warnings, "Phase " + name + " is missing recommended section: " + recommended[rc_i])
+        }
+        rc_i = rc_i + 1
+    }
+
+    boxes := count_checkboxes(text)
+    if boxes == 0 {
+        errors = push(errors, "Phase " + name + " has no acceptance criteria checkboxes")
+    } else if boxes < 2 {
+        warnings = push(warnings, "Phase " + name + " acceptance criteria look thin (only " + "${boxes}" + " item)")
+    }
+    return {"errors": errors, "warnings": warnings}
+}
+
+func scan_pack(out_root, phases_dir) {
+    mut errors := []
+    mut warnings := []
+    top := list_dir(out_root)
+    mut sp_i := 0
+    sp_n := len(top)
+    while sp_i < sp_n {
+        nm := top[sp_i]
+        if looks_secret(nm) {
+            errors = push(errors, "Pack contains a secret-looking file: " + nm)
+        }
+        if path_is_dir(join_path(out_root, nm)) == false {
+            if has_placeholder(read_or_empty(join_path(out_root, nm))) {
+                warnings = push(warnings, "Potential placeholder text remains in " + nm)
+            }
+        }
+        sp_i = sp_i + 1
+    }
+    if path_is_dir(phases_dir) {
+        pnames := list_dir(phases_dir)
+        mut pj := 0
+        pn := len(pnames)
+        while pj < pn {
+            pnm := pnames[pj]
+            if has_placeholder(read_or_empty(join_path(phases_dir, pnm))) {
+                warnings = push(warnings, "Potential placeholder text remains in phases/" + pnm)
+            }
+            pj = pj + 1
+        }
+    }
+    return {"errors": errors, "warnings": warnings}
+}
+
+func concat_lists(a, b) {
+    mut out := a
+    mut cl_i := 0
+    cl_n := len(b)
+    while cl_i < cl_n {
+        out = push(out, b[cl_i])
+        cl_i = cl_i + 1
+    }
+    return out
+}

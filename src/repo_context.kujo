@@ -1,0 +1,280 @@
+# PackWrite :: repo_context
+#
+# Lightweight, safety-filtered repository inspection. Produces a compact summary
+# the AI can use to write accurate phase docs WITHOUT dumping the whole repo or
+# leaking secrets. Directory trees are summarized (names/structure), only small
+# relevant files are referenced, and secret-looking paths are excluded and
+# surfaced as warnings.
+
+from src.util import truthy, is_text, has_extension, base_of, first_summary, lc, list_includes
+
+# Filenames/paths that must never be read or included, beyond the configured
+# exclude list. Matched by basename.
+export func secret_names() {
+    return ["id_rsa", "id_ed25519", "id_dsa", "id_ecdsa", ".npmrc", ".netrc", "credentials", ".pgpass"]
+}
+
+# Extensions that mark secret material.
+export func secret_exts() {
+    return [".pem", ".key", ".p12", ".pfx", ".keystore"]
+}
+
+# True when `name` should be excluded from context entirely.
+export func is_excluded(name, exclude) {
+    if list_includes(exclude, name) {
+        return true
+    }
+    if starts_with(name, ".env") {
+        return true
+    }
+    if has_extension(name, secret_exts()) {
+        return true
+    }
+    if list_includes(secret_names(), name) {
+        return true
+    }
+    return false
+}
+
+# True when `name` looks like it carries secrets (used for warnings).
+export func looks_secret(name) {
+    if starts_with(name, ".env") {
+        return true
+    }
+    if has_extension(name, secret_exts()) {
+        return true
+    }
+    if list_includes(secret_names(), name) {
+        return true
+    }
+    low := lc(name)
+    if contains(low, "secret") == 1 {
+        return true
+    }
+    if contains(low, "token") == 1 {
+        return true
+    }
+    return false
+}
+
+# True when a top-level entry passes the configured `include` allow-list. An
+# empty/absent include list means "include everything" (subject to exclude rules).
+# The allow-list only gates TOP-LEVEL entries; children inside an included subtree
+# are listed regardless of the allow-list.
+export func included(name, include) {
+    if type(include) != "array" || len(include) == 0 {
+        return true
+    }
+    return list_includes(include, name)
+}
+
+# Should an entry be surfaced at all? Excluded names and secret-looking names are
+# always skipped (the warning wording elsewhere reflects that they are skipped).
+func skip_entry(name, exclude) {
+    if is_excluded(name, exclude) {
+        return true
+    }
+    if looks_secret(name) {
+        return true
+    }
+    return false
+}
+
+# List immediate children of `dir` that survive the skip rules. Returns [] when
+# the directory is missing. Each item is {"name","kind"} with kind dir|file. The
+# include allow-list is NOT applied here — it only gates top-level entries.
+func list_safe(dir, exclude) {
+    if path_is_dir(dir) == false {
+        return []
+    }
+    names := list_dir(dir)
+    mut out := []
+    mut ls_i := 0
+    ls_n := len(names)
+    while ls_i < ls_n {
+        nm := names[ls_i]
+        if skip_entry(nm, exclude) == false {
+            child := join_path(dir, nm)
+            mut kind := "file"
+            if path_is_dir(child) {
+                kind = "dir"
+            }
+            out = push(out, {"name": nm, "kind": kind})
+        }
+        ls_i = ls_i + 1
+    }
+    return out
+}
+
+# Detect language/runtime + suggested checks from manifest files present.
+func detect_stack(cwd) {
+    mut langs := []
+    mut checks := []
+    if file_exists(join_path(cwd, "Cargo.toml")) {
+        langs = push(langs, "rust")
+        checks = push(checks, "cargo test")
+        checks = push(checks, "cargo clippy")
+    }
+    if file_exists(join_path(cwd, "kujo.toml")) {
+        langs = push(langs, "kujo")
+        checks = push(checks, "kujo check")
+        checks = push(checks, "./tests/run.sh")
+    }
+    if file_exists(join_path(cwd, "package.json")) {
+        langs = push(langs, "node")
+        checks = push(checks, "npm test")
+    }
+    if file_exists(join_path(cwd, "pyproject.toml")) {
+        langs = push(langs, "python")
+        checks = push(checks, "pytest")
+    }
+    if file_exists(join_path(cwd, "go.mod")) {
+        langs = push(langs, "go")
+        checks = push(checks, "go test ./...")
+    }
+    return {"langs": langs, "checks": checks}
+}
+
+# Read a short README summary if present (first non-heading line, capped).
+func readme_summary(cwd) {
+    p := join_path(cwd, "README.md")
+    if file_exists(p) == false {
+        return ""
+    }
+    text := read_file(p)
+    return first_summary(text, 200)
+}
+
+# Scan top-level entries, applying the include allow-list and skip rules. Any
+# secret-looking name is skipped and surfaced as a warning. Returns
+# {"top":[...],"warnings":[...]}.
+func scan_top(cwd, exclude, include) {
+    names := list_dir(cwd)
+    mut top := []
+    mut warnings := []
+    mut st_i := 0
+    st_n := len(names)
+    while st_i < st_n {
+        nm := names[st_i]
+        if looks_secret(nm) {
+            warnings = push(warnings, "skipped secret-looking path from context: " + nm)
+        }
+        if skip_entry(nm, exclude) == false && included(nm, include) {
+            child := join_path(cwd, nm)
+            mut kind := "file"
+            if path_is_dir(child) {
+                kind = "dir"
+            }
+            top = push(top, {"name": nm, "kind": kind})
+        }
+        st_i = st_i + 1
+    }
+    return {"top": top, "warnings": warnings}
+}
+
+# Build a summarized subtree for each included top-level directory (capped so the
+# prompt stays lightweight). Returns [{"name","entries":[...]}].
+func collect_subtrees(cwd, top, exclude) {
+    mut subtrees := []
+    mut cs_i := 0
+    cs_n := len(top)
+    while cs_i < cs_n {
+        e := top[cs_i]
+        if e["kind"] == "dir" && len(subtrees) < 12 {
+            entries := list_safe(join_path(cwd, e["name"]), exclude)
+            subtrees = push(subtrees, {"name": e["name"], "entries": entries})
+        }
+        cs_i = cs_i + 1
+    }
+    return subtrees
+}
+
+# Collect the full context summary. `cfg` supplies the include allow-list, the
+# exclude list, the prompt file, and the output dir.
+export func context_collect(cwd, cfg) {
+    exclude := cfg["repo_exclude"]
+    include := cfg["repo_include"]
+    scan := scan_top(cwd, exclude, include)
+    stack := detect_stack(cwd)
+    subtrees := collect_subtrees(cwd, scan["top"], exclude)
+
+    out_dir := join_path(cwd, cfg["output_dir"])
+    mut agent_status := "absent"
+    if path_is_dir(out_dir) {
+        agent_status = "present"
+    }
+    mut mega_status := "absent"
+    if file_exists(join_path(cwd, cfg["prompt_file"])) {
+        mega_status = "present"
+    }
+
+    summary := {
+        "root": base_of(cwd),
+        "readme": readme_summary(cwd),
+        "languages": stack["langs"],
+        "suggested_checks": stack["checks"],
+        "top_level": scan["top"],
+        "subtrees": subtrees,
+        "agent_dir": agent_status,
+        "mega_prompt": mega_status
+    }
+    return {"summary": summary, "warnings": scan["warnings"]}
+}
+
+# Render the context summary as compact Markdown for the AI prompt.
+export func context_render(ctx) {
+    s := ctx["summary"]
+    mut out := "## Repository context (lightweight, redacted)\n\n"
+    out = out + "- Root directory: " + s["root"] + "\n"
+    if is_text(s["readme"]) {
+        out = out + "- README summary: " + s["readme"] + "\n"
+    }
+    out = out + "- Languages/runtime: " + render_list_inline(s["languages"]) + "\n"
+    out = out + "- Suggested checks: " + render_list_inline(s["suggested_checks"]) + "\n"
+    out = out + "- Existing /agent dir: " + s["agent_dir"] + "\n"
+    out = out + "- MEGA_PROMPT present: " + s["mega_prompt"] + "\n"
+    out = out + "\nTop level:\n" + render_entries(s["top_level"])
+    out = out + render_subtrees(s["subtrees"])
+    return out
+}
+
+func render_subtrees(subtrees) {
+    if type(subtrees) != "array" || len(subtrees) == 0 {
+        return ""
+    }
+    mut out := ""
+    mut rs_i := 0
+    rs_n := len(subtrees)
+    while rs_i < rs_n {
+        st := subtrees[rs_i]
+        out = out + "\n" + st["name"] + "/:\n" + render_entries(st["entries"])
+        rs_i = rs_i + 1
+    }
+    return out
+}
+
+func render_list_inline(arr) {
+    if type(arr) != "array" || len(arr) == 0 {
+        return "(none detected)"
+    }
+    return join(arr, ", ")
+}
+
+func render_entries(entries) {
+    if type(entries) != "array" || len(entries) == 0 {
+        return "  (none)\n"
+    }
+    mut out := ""
+    mut re_i := 0
+    re_n := len(entries)
+    while re_i < re_n {
+        e := entries[re_i]
+        mut marker := ""
+        if e["kind"] == "dir" {
+            marker = "/"
+        }
+        out = out + "  - " + e["name"] + marker + "\n"
+        re_i = re_i + 1
+    }
+    return out
+}

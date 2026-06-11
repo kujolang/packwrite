@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# PackWrite launcher.
+#
+# Thin convenience wrapper so you can type `packwrite <command>` instead of
+# `kujo run /path/to/packwrite.kujo -- <command>`.
+#
+# It runs the Kujo interpreter on the project entrypoint, preserving your
+# current working directory (so config discovery and the generated /agent pack
+# land where you invoke it). Override the interpreter with the KUJO environment
+# variable, e.g.
+#   KUJO=/path/to/kujo/target/release/kujo packwrite init MEGA_PROMPT.md
+set -euo pipefail
+
+# Resolve this script's real location, following symlinks, so the launcher works
+# when installed via a symlink (e.g. `make install` -> /usr/local/bin/packwrite).
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  case "$SOURCE" in
+    /*) ;;
+    *) SOURCE="$DIR/$SOURCE" ;;
+  esac
+done
+PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)"
+KUJO="${KUJO:-kujo}"
+
+if ! command -v "$KUJO" >/dev/null 2>&1 && [ ! -x "$KUJO" ]; then
+  echo "packwrite: cannot find the Kujo interpreter ('$KUJO')." >&2
+  echo "Set KUJO to your kujo binary, e.g. KUJO=/path/to/kujo/target/release/kujo" >&2
+  exit 127
+fi
+
+exec "$KUJO" run "$PROJECT_DIR/packwrite.kujo" -- "$@"

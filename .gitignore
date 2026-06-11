@@ -1,0 +1,12 @@
+# PackWrite working files
+*.log
+.DS_Store
+
+# Environment / secrets — never commit
+.env
+.env.*
+*.pem
+*.key
+
+# Local scratch
+/tmp/

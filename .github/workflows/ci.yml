@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint-and-test:
+    name: kujo check + offline test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # PackWrite is interpreted by the Kujo runtime, which is not bundled here.
+      # Wire ONE of the following for your environment, then delete the others:
+      #
+      #   (a) Download a published Kujo release artifact:
+      #       run: |
+      #         curl -fsSL "$KUJO_RELEASE_URL" -o /usr/local/bin/kujo
+      #         chmod +x /usr/local/bin/kujo
+      #
+      #   (b) Build Kujo from a sibling checkout (set KUJO_REPO secret/var):
+      #       - uses: actions/checkout@v4
+      #         with: { repository: "${{ vars.KUJO_REPO }}", path: kujo-src }
+      #       - run: cargo build --release --manifest-path kujo-src/Cargo.toml
+      #       - run: echo "$PWD/kujo-src/target/release" >> "$GITHUB_PATH"
+      #
+      # The step below fails fast with instructions until a Kujo binary is provided,
+      # so CI never reports a misleading green without actually running the suite.
+      - name: Ensure Kujo is available
+        run: |
+          if ! command -v kujo >/dev/null 2>&1; then
+            echo "::error::No 'kujo' binary on PATH. Wire the 'Set up Kujo' step in .github/workflows/ci.yml."
+            exit 1
+          fi
+          kujo --version
+
+      - name: Lint (kujo check)
+        run: make check
+
+      - name: Test (unit + CLI integration, offline)
+        run: make test

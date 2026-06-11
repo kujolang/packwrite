@@ -1,0 +1,52 @@
+# Example PackWrite project config. Copy to `packwrite.toml` and edit.
+# Resolution order: CLI flags > packwrite.toml > global config > defaults.
+# API keys are NEVER read from here — set PACKWRITE_API_KEY (or a provider key)
+# in your environment.
+
+[prompt]
+file = "MEGA_PROMPT.md"
+
+[output]
+dir = "agent"
+overwrite = false
+mode = "autopilot"   # RESERVED: parsed but not yet wired (future generation-mode toggle)
+
+[model]
+provider = "deepseek"
+model = "deepseek-v4-pro"
+temperature = 0.1
+timeout = 120
+# endpoint = "https://api.deepseek.com/chat/completions"  # override the provider preset
+
+# `include` is a top-level allow-list: when non-empty, only these top-level names
+# (files and directories) are shown to the model; included directories are then
+# summarized one level deep. Leave it empty/omit it to include everything that is
+# not excluded. `exclude` and secret-looking paths always win.
+[repo_context]
+include = [
+  "README.md",
+  "package.json",
+  "pyproject.toml",
+  "Cargo.toml",
+  "src",
+  "tests",
+  "docs",
+]
+exclude = [
+  ".env",
+  ".env.local",
+  ".git",
+  "node_modules",
+  "vendor",
+  "dist",
+  "build",
+  ".next",
+  "coverage",
+]
+
+[pack]
+min_phases = 6
+max_phases = 12
+include_deepseek_prompt = true
+include_codex_review_prompt = true
+include_review_checklist = true

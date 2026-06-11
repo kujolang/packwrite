@@ -1,0 +1,58 @@
+name: Bug report
+description: Report incorrect or unexpected PackWrite behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. For suspected **security** issues, do not file here —
+        follow SECURITY.md instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what occurred instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The exact command(s) you ran. Redact any secrets.
+      placeholder: |
+        1. packwrite init MEGA_PROMPT.md --provider openai
+        2. ...
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The full command output (error/warning lines included).
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: PackWrite version
+      description: Output of `packwrite version`.
+      placeholder: packwrite 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, and the Kujo version (`kujo --version`).
+      placeholder: macOS 15 / kujo 1.0.0
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I ran `packwrite doctor` and included anything relevant
+        - label: I confirmed this is not a configured-model/network issue

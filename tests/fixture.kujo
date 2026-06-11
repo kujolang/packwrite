@@ -1,0 +1,32 @@
+# Emit a valid pack manifest to stdout, for the CLI integration test to feed
+# through the PACKWRITE_FAKE_RESPONSE_FILE seam. No network, deterministic.
+
+func phase_content(label) {
+    mut c := "# Phase " + label + "\n\n"
+    c = c + "## Goal\nDo the thing.\n\n"
+    c = c + "## Read before starting\n- agent/MASTER.md\n\n"
+    c = c + "## Scope\n- a\n\n"
+    c = c + "## Out of scope\n- b\n\n"
+    c = c + "## Implementation notes\nNotes.\n\n"
+    c = c + "## Acceptance criteria\n- [ ] one\n- [ ] two\n\n"
+    c = c + "## Suggested checks\n- run it\n\n"
+    c = c + "## Handoff requirements\nUpdate HANDOFF.\n"
+    return c
+}
+
+mut files := []
+files = push(files, {"path": "agent/MASTER.md", "content": "# MASTER\n\nStable intent. Assumptions documented.\n"})
+files = push(files, {"path": "agent/TODO.md", "content": "# TODO\n\n- [ ] Phase 00\n  - phases/00-project-brief.md\n- [ ] Phase 01\n  - phases/01-alpha.md\n- [ ] Phase 02\n  - phases/02-beta.md\n- [ ] Phase 03\n  - phases/03-gamma.md\n- [ ] Phase 04\n  - phases/04-delta.md\n- [ ] Phase 05\n  - phases/05-epsilon.md\n"})
+files = push(files, {"path": "agent/HANDOFF.md", "content": "# Handoff\n\n## Current Status\nNone.\n\n## Completed Phases\nNone.\n\n## Known Issues\nNone.\n\n## Next Agent Notes\nStart phase 00.\n"})
+files = push(files, {"path": "agent/DECISIONS.md", "content": "# Decisions\n\n## Confirmed Decisions\nx\n\n## Open Decisions\ny\n\n## Decision Log\nNone.\n"})
+files = push(files, {"path": "agent/REVIEW_CHECKLIST.md", "content": "# Review Checklist\n\n## Scope\n- [ ] a\n- [ ] b\n\n## Architecture\n- [ ] c\n- [ ] d\n\n## Tests\n- [ ] e\n- [ ] f\n"})
+files = push(files, {"path": "agent/DEEPSEEK_START.md", "content": "# DeepSeek\n\nWork autonomously through all phases. Do not wait for approval.\n"})
+files = push(files, {"path": "agent/CODEX_REVIEW_PROMPT.md", "content": "# Codex\n\nScore and produce a repair checklist.\n"})
+files = push(files, {"path": "agent/phases/00-project-brief.md", "content": phase_content("00: Brief")})
+files = push(files, {"path": "agent/phases/01-alpha.md", "content": phase_content("01: Alpha")})
+files = push(files, {"path": "agent/phases/02-beta.md", "content": phase_content("02: Beta")})
+files = push(files, {"path": "agent/phases/03-gamma.md", "content": phase_content("03: Gamma")})
+files = push(files, {"path": "agent/phases/04-delta.md", "content": phase_content("04: Delta")})
+files = push(files, {"path": "agent/phases/05-epsilon.md", "content": phase_content("05: Epsilon")})
+
+print(to_json_pretty({"files": files}))
