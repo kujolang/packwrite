@@ -120,6 +120,51 @@ done
 out="$(KUJO="$KUJO" "$BIN" prompt deepseek --help 2>&1)"
 if echo "$out" | grep -qi "usage: packwrite prompt"; then ok; else bad "prompt deepseek --help emitted prompt instead of help"; fi
 
+# Static help output is an agent-facing contract, so keep the full text exact.
+emdash="$(printf '\342\200\224')"
+help_expected="$(cat <<EOF
+packwrite 0.1.0 $emdash compile a mega prompt into a validated /agent pack
+
+Usage: packwrite <command> [arguments]
+
+Commands:
+  init [file]   Generate an /agent pack from a mega prompt
+  validate      Validate an existing /agent pack
+  prompt <t>    Print a pack prompt (t = deepseek | codex-review)
+  config        Show the resolved configuration
+  doctor        Check config, provider, endpoint, and prompt/output state
+  help          Show this help
+  version       Show version
+
+Config resolution: CLI flags > packwrite.toml > global config > defaults
+API keys come from the environment (PACKWRITE_API_KEY or a provider key).
+EOF
+)"
+out="$(KUJO="$KUJO" "$BIN" help 2>&1)"
+if [ "$out" = "$help_expected" ]; then ok; else bad "main help output changed"; fi
+
+init_help_expected="$(cat <<'EOF'
+usage: packwrite init [mega-prompt-file] [options]
+
+Options:
+  --provider <name>     deepseek | openai | local (OpenAI-compatible)
+                        other providers: set --endpoint to a compatible gateway
+  --model <name>        model identifier
+  --endpoint <url>      OpenAI-compatible chat-completions URL (overrides preset)
+  --temperature <n>     sampling temperature
+  --timeout <seconds>   request timeout
+  --output <dir>        output pack directory (default: agent)
+  --overwrite           replace an existing pack directory
+  --dry-run             parse + plan but write nothing
+  --config <file>       use a specific packwrite.toml
+  --verbose             extra diagnostics (printed to stdout)
+  --debug               sanitized provider/response diagnostics
+  --save-raw-response <file>  save raw model response (may contain sensitive data)
+EOF
+)"
+out="$(KUJO="$KUJO" "$BIN" init --help 2>&1)"
+if [ "$out" = "$init_help_expected" ]; then ok; else bad "init help output changed"; fi
+
 echo ""
 echo "cli integration: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

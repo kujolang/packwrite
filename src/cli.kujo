@@ -411,6 +411,15 @@ func print_list(prefix, items) {
     }
 }
 
+func print_lines(lines) {
+    mut ln_i := 0
+    ln_n := len(lines)
+    while ln_i < ln_n {
+        print("${lines[ln_i]}")
+        ln_i = ln_i + 1
+    }
+}
+
 func print_paths(items) {
     mut pp_i := 0
     pp_n := len(items)
@@ -459,22 +468,24 @@ func default_codex_prompt() {
 # ---------------------------------------------------------------------------
 
 func print_init_help() {
-    print("usage: packwrite init [mega-prompt-file] [options]")
-    print("")
-    print("Options:")
-    print("  --provider <name>     deepseek | openai | local (OpenAI-compatible)")
-    print("                        other providers: set --endpoint to a compatible gateway")
-    print("  --model <name>        model identifier")
-    print("  --endpoint <url>      OpenAI-compatible chat-completions URL (overrides preset)")
-    print("  --temperature <n>     sampling temperature")
-    print("  --timeout <seconds>   request timeout")
-    print("  --output <dir>        output pack directory (default: agent)")
-    print("  --overwrite           replace an existing pack directory")
-    print("  --dry-run             parse + plan but write nothing")
-    print("  --config <file>       use a specific packwrite.toml")
-    print("  --verbose             extra diagnostics (printed to stdout)")
-    print("  --debug               sanitized provider/response diagnostics")
-    print("  --save-raw-response <file>  save raw model response (may contain sensitive data)")
+    print_lines([
+        "usage: packwrite init [mega-prompt-file] [options]",
+        "",
+        "Options:",
+        "  --provider <name>     deepseek | openai | local (OpenAI-compatible)",
+        "                        other providers: set --endpoint to a compatible gateway",
+        "  --model <name>        model identifier",
+        "  --endpoint <url>      OpenAI-compatible chat-completions URL (overrides preset)",
+        "  --temperature <n>     sampling temperature",
+        "  --timeout <seconds>   request timeout",
+        "  --output <dir>        output pack directory (default: agent)",
+        "  --overwrite           replace an existing pack directory",
+        "  --dry-run             parse + plan but write nothing",
+        "  --config <file>       use a specific packwrite.toml",
+        "  --verbose             extra diagnostics (printed to stdout)",
+        "  --debug               sanitized provider/response diagnostics",
+        "  --save-raw-response <file>  save raw model response (may contain sensitive data)"
+    ])
 }
 
 func safe_value(v, key, fallback) {
@@ -509,21 +520,23 @@ func save_raw_response_if_requested(parsed, cwd, text) {
 }
 
 func print_help() {
-    print("packwrite " + VERSION + " — compile a mega prompt into a validated /agent pack")
-    print("")
-    print("Usage: packwrite <command> [arguments]")
-    print("")
-    print("Commands:")
-    print("  init [file]   Generate an /agent pack from a mega prompt")
-    print("  validate      Validate an existing /agent pack")
-    print("  prompt <t>    Print a pack prompt (t = deepseek | codex-review)")
-    print("  config        Show the resolved configuration")
-    print("  doctor        Check config, provider, endpoint, and prompt/output state")
-    print("  help          Show this help")
-    print("  version       Show version")
-    print("")
-    print("Config resolution: CLI flags > packwrite.toml > global config > defaults")
-    print("API keys come from the environment (PACKWRITE_API_KEY or a provider key).")
+    print_lines([
+        "packwrite " + VERSION + " — compile a mega prompt into a validated /agent pack",
+        "",
+        "Usage: packwrite <command> [arguments]",
+        "",
+        "Commands:",
+        "  init [file]   Generate an /agent pack from a mega prompt",
+        "  validate      Validate an existing /agent pack",
+        "  prompt <t>    Print a pack prompt (t = deepseek | codex-review)",
+        "  config        Show the resolved configuration",
+        "  doctor        Check config, provider, endpoint, and prompt/output state",
+        "  help          Show this help",
+        "  version       Show version",
+        "",
+        "Config resolution: CLI flags > packwrite.toml > global config > defaults",
+        "API keys come from the environment (PACKWRITE_API_KEY or a provider key)."
+    ])
 }
 
 # Entry point. `argv` is the user argument list (args()).
