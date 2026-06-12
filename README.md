@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-136%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-165%20passing-brightgreen.svg)](tests/)
 [![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-orange.svg)](#about-kujo)
 
 **PackWrite is an AI-assisted, local-first workflow-pack compiler that turns project intent into validated agent execution packs.**
@@ -75,9 +75,16 @@ The launcher preserves your working directory, so config discovery and the gener
 
 ```bash
 cd my-project
+cat > MEGA_PROMPT.md <<'EOF'
+# Demo
+
+Build a small CLI that says hello, with tests and a README.
+EOF
+
 export PACKWRITE_API_KEY=sk-...                       # your provider key (env only)
-packwrite init MEGA_PROMPT.md --provider deepseek --model deepseek-v4-pro
+packwrite doctor
 packwrite init MEGA_PROMPT.md --dry-run
+packwrite init MEGA_PROMPT.md --provider deepseek --model deepseek-v4-pro
 packwrite validate
 packwrite prompt deepseek         # paste into your implementation agent
 ```
@@ -304,6 +311,10 @@ categories stay greppable: `warning (...)`, `! ` (validation warnings), `note:`,
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Every error message and its fix |
 | [AGENTS.md](AGENTS.md) | Orientation for coding agents working on PackWrite |
 
+Canonical copyable examples live in this README, [docs/HOWTO.md](docs/HOWTO.md), and
+[`packwrite.example.toml`](packwrite.example.toml). Test fixtures are behavior
+contracts, not style examples.
+
 ## Development
 
 ```bash
@@ -312,7 +323,7 @@ make check      # lint only
 make help       # list tasks
 ```
 
-The suite (105 unit + 31 CLI integration assertions) is **fully offline** — AI calls go
+The suite (125 unit + 40 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
 is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.

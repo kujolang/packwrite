@@ -41,6 +41,26 @@ docs/                   HOWTO, CONFIGURATION, ARCHITECTURE, TROUBLESHOOTING
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the data flow and design
 principles.
 
+## Examples and search hygiene
+
+Canonical, copyable examples live in `README.md`, `docs/HOWTO.md`, and
+`packwrite.example.toml`. Keep those examples minimal, runnable, and representative of
+the idioms we want agents to imitate.
+
+`tests/fixture.kujo`, `tests/packwrite_test.kujo`, and `tests/cli_integration.sh` are
+contract fixtures. They may be intentionally explicit or repetitive so failures are
+easy to diagnose; do not shorten them just to improve style unless the contract remains
+clearer afterward.
+
+For readability sweeps, start with:
+
+```bash
+rg "pattern" src README.md docs AGENTS.md CONTRIBUTING.md packwrite.example.toml
+```
+
+Exclude generated or bulk paths (`agent/`, `.git/`, `target/`, `dist/`, `build/`,
+`coverage/`, `node_modules/`, `.venv/`) unless the task explicitly targets them.
+
 ## Build & test
 
 There is no compile step. Lint every module and run the full suite:

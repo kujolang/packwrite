@@ -3,6 +3,10 @@
 PackWrite is a standalone Kujo CLI that compiles a `MEGA_PROMPT.md` into a validated
 `/agent` execution pack. It is separate from the Kujo language repo (reference-only).
 
+Canonical examples live in `README.md`, `docs/HOWTO.md`, and `packwrite.example.toml`.
+Treat `tests/fixture.kujo`, `tests/packwrite_test.kujo`, and CLI integration outputs as
+behavior contracts, not copy-style examples.
+
 ## Layout
 
 ```
@@ -49,8 +53,20 @@ tests/
 make test KUJO=/path/to/kujo/target/release/kujo   # or: KUJO=... ./tests/run.sh
 ```
 
-Fully offline (105 unit + 31 CLI integration assertions). AI calls go through the
+Fully offline (125 unit + 40 CLI integration assertions). AI calls go through the
 fake-injection seam — no API key or network.
+
+## Search hygiene
+
+When sweeping for readability or examples, start with source and canonical docs:
+
+```bash
+rg "pattern" src README.md docs AGENTS.md CONTRIBUTING.md packwrite.example.toml
+```
+
+Exclude generated or bulk output such as `agent/`, `.git/`, `target/`, `dist/`,
+`build/`, `coverage/`, `node_modules/`, and `.venv/` unless the task explicitly targets
+those paths. Keep fixtures verbose when their exact output makes a contract clearer.
 
 ## Deeper docs
 

@@ -179,10 +179,10 @@ The adapter speaks the OpenAI-compatible chat protocol only. Point `--endpoint` 
 compatible URL — including a gateway in front of Claude or Gemini:
 
 ```bash
+export PACKWRITE_API_KEY=...
 packwrite init MEGA_PROMPT.md --provider openrouter \
   --endpoint https://openrouter.ai/api/v1/chat/completions \
   --model anthropic/claude-3.7-sonnet
-export PACKWRITE_API_KEY=...
 ```
 
 ### Slim the pack
