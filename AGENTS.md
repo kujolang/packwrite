@@ -41,6 +41,10 @@ tests/
   char-safe helpers in `util.kujo` (`str_find`, `str_find_from`, `str_rfind`).
 - `parse_json` / `parse_toml` are guarded (try/except + type checks); never trusted raw.
 - Modules return envelopes; only `cli.kujo` prints and chooses exit codes (0/1/2).
+- In `cli.kujo`, prefer the local output helpers (`print_lines`, `print_list`,
+  `print_paths`, `print_kv`, `print_usage`, `print_error`) for repeated output blocks,
+  aligned label/value rows, usage lines, and canonical error prefixes. Preserve exact
+  CLI text because integration tests treat it as a contract.
 - No stderr stream exists in this runtime: everything prints to stdout, prefixed
   (`warning`/`!`/`note:`/`error:`) so categories stay distinguishable.
 - The `ai_chat` adapter is OpenAI-compatible only (`{model, messages}`, Bearer auth,

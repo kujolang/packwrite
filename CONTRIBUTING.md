@@ -86,6 +86,9 @@ stay that way. Do not add tests that call a real provider.
 - **Single responsibility per module.** Only `src/cli.kujo` prints to the user and
   chooses exit codes. Library modules return `{"ok": bool, ...}` envelopes (see
   `src/errors.kujo`).
+- **CLI output helpers.** Use `print_lines`, `print_list`, `print_paths`, `print_kv`,
+  `print_usage`, and `print_error` in `src/cli.kujo` when output repeats. Preserve the
+  exact user-facing text unless the change intentionally updates the CLI contract.
 - **Exit codes:** `0` success, `1` operational failure, `2` usage error.
 - **Deterministic core.** Structure, parsing, validation, config, and safety are pure
   Kujo with no AI involvement. The model only generates pack *content*.

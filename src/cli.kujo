@@ -89,7 +89,7 @@ func cmd_init(tokens, inject) {
 
     loaded := config_load(parsed["flags"], cwd)
     if is_ok(loaded) == false {
-        print("error: " + err_msg(loaded))
+        print_error(err_msg(loaded))
         return 1
     }
     cfg := loaded["config"]
@@ -103,12 +103,12 @@ func cmd_init(tokens, inject) {
     print_step(1, 8, "Resolving mega prompt")
     pres := prompt_resolve(first_positional(parsed), cfg, cwd)
     if is_ok(pres) == false {
-        print("error: " + err_msg(pres))
+        print_error(err_msg(pres))
         return 1
     }
     pread := prompt_read(pres["path"])
     if is_ok(pread) == false {
-        print("error: " + err_msg(pread))
+        print_error(err_msg(pread))
         return 1
     }
 
@@ -116,7 +116,7 @@ func cmd_init(tokens, inject) {
     print_step(2, 8, "Checking output directory safety")
     guard := pack_guard_overwrite(cfg, cwd)
     if is_ok(guard) == false {
-        print("error: " + err_msg(guard))
+        print_error(err_msg(guard))
         return 1
     }
 
@@ -137,7 +137,7 @@ func cmd_init(tokens, inject) {
     print_step(5, 8, "Requesting model output from " + cfg["model_provider"] + "/" + cfg["model_model"])
     gen := ai_generate(dprompt, cfg, resolve_inject(inject))
     if is_ok(gen) == false {
-        print("error: " + err_msg(gen))
+        print_error(err_msg(gen))
         return 1
     }
     save_raw_response_if_requested(parsed, cwd, gen["text"])
@@ -154,14 +154,14 @@ func cmd_init(tokens, inject) {
     }
     manifest := pack_parse_with_meta(gen["text"], meta)
     if is_ok(manifest) == false {
-        print("error: " + err_msg(manifest))
+        print_error(err_msg(manifest))
         return 1
     }
 
     # 7. Validate manifest semantics before any write.
     manifest_check := pack_validate_manifest(manifest["files"], cfg, cwd)
     if is_ok(manifest_check) == false {
-        print("error: " + err_msg(manifest_check))
+        print_error(err_msg(manifest_check))
         return 1
     }
 
@@ -169,7 +169,7 @@ func cmd_init(tokens, inject) {
     print_step(7, 8, "Writing pack files to " + cfg["output_dir"] + "/")
     applied := pack_apply(manifest["files"], cfg, cwd, dry)
     if is_ok(applied) == false {
-        print("error: " + err_msg(applied))
+        print_error(err_msg(applied))
         return 1
     }
 
@@ -189,8 +189,7 @@ func cmd_init(tokens, inject) {
     vres := validate_run(out_root, cfg)
     print_summary(cfg, applied, vres, gen)
     if truthy(vres["ok"]) == false {
-        print("")
-        print("Validation FAILED:")
+        print_lines(["", "Validation FAILED:"])
         print_list("  - ", vres["errors"])
         return 1
     }
@@ -203,24 +202,21 @@ func print_summary(cfg, applied, vres, gen) {
     if truthy(vres["ok"]) == false {
         vstatus = "FAILED"
     }
-    print("PackWrite generated an agent pack.")
-    print("")
-    print("  Output:     " + cfg["output_dir"] + "/")
-    print("  Provider:   " + "${gen["provider"]}")
-    print("  Model:      " + "${gen["model"]}")
-    print("  Files:      " + "${applied["written"]}")
-    print("  Phases:     " + "${applied["phases"]}")
+    print_lines(["PackWrite generated an agent pack.", ""])
+    print_kv(11, "Output", cfg["output_dir"] + "/")
+    print_kv(11, "Provider", "${gen["provider"]}")
+    print_kv(11, "Model", "${gen["model"]}")
+    print_kv(11, "Files", "${applied["written"]}")
+    print_kv(11, "Phases", "${applied["phases"]}")
     if has_key(applied, "pruned") == 1 && applied["pruned"] > 0 {
-        print("  Pruned:     " + "${applied["pruned"]}" + " stale file(s)")
+        print_kv(11, "Pruned", "${applied["pruned"]}" + " stale file(s)")
     }
-    print("  Validation: " + vstatus + " with " + "${nwarn}" + " warnings")
+    print_kv(11, "Validation", vstatus + " with " + "${nwarn}" + " warnings")
     if nwarn > 0 {
         print_list("  ! ", vres["warnings"])
     }
     if truthy(vres["ok"]) {
-        print("")
-        print("Next:")
-        print("  packwrite prompt deepseek")
+        print_lines(["", "Next:", "  packwrite prompt deepseek"])
     }
 }
 
@@ -235,13 +231,13 @@ func print_step(n, total, label) {
 func cmd_validate(tokens) {
     parsed := parse_args(tokens, bool_flag_list())
     if truthy(flag_bool(parsed, "help")) {
-        print("usage: packwrite validate [--output <dir>] [--config <file>]")
+        print_usage("packwrite validate [--output <dir>] [--config <file>]")
         return 0
     }
     cwd := os_getcwd()
     loaded := config_load(parsed["flags"], cwd)
     if is_ok(loaded) == false {
-        print("error: " + err_msg(loaded))
+        print_error(err_msg(loaded))
         return 1
     }
     cfg := loaded["config"]
@@ -270,19 +266,21 @@ func cmd_validate(tokens) {
 func cmd_prompt(tokens) {
     parsed := parse_args(tokens, bool_flag_list())
     if truthy(flag_bool(parsed, "help")) {
-        print("usage: packwrite prompt <deepseek|codex-review> [--output <dir>] [--config <file>]")
-        print("Prints the named prompt from the pack, or a built-in default if absent.")
+        print_lines([
+            "usage: packwrite prompt <deepseek|codex-review> [--output <dir>] [--config <file>]",
+            "Prints the named prompt from the pack, or a built-in default if absent."
+        ])
         return 0
     }
     target := first_positional(parsed)
     if type(target) == "null" {
-        print("usage: packwrite prompt <deepseek|codex-review>")
+        print_usage("packwrite prompt <deepseek|codex-review>")
         return 2
     }
     cwd := os_getcwd()
     loaded := config_load(parsed["flags"], cwd)
     if is_ok(loaded) == false {
-        print("error: " + err_msg(loaded))
+        print_error(err_msg(loaded))
         return 1
     }
     cfg := loaded["config"]
@@ -294,7 +292,7 @@ func cmd_prompt(tokens) {
     if target == "codex-review" || target == "codex" {
         return emit_prompt(join_path(out_root, "CODEX_REVIEW_PROMPT.md"), default_codex_prompt())
     }
-    print("error: unknown prompt target '" + "${target}" + "'. Valid targets: deepseek, codex-review")
+    print_error("unknown prompt target '" + "${target}" + "'. Valid targets: deepseek, codex-review")
     return 2
 }
 
@@ -315,18 +313,20 @@ func emit_prompt(path, fallback) {
 func cmd_config(tokens) {
     parsed := parse_args(tokens, bool_flag_list())
     if truthy(flag_bool(parsed, "help")) {
-        print("usage: packwrite config [--config <file>] [--<any-flag> ...]")
-        print("Prints the fully resolved configuration and its sources.")
+        print_lines([
+            "usage: packwrite config [--config <file>] [--<any-flag> ...]",
+            "Prints the fully resolved configuration and its sources."
+        ])
         return 0
     }
     cwd := os_getcwd()
     loaded := config_load(parsed["flags"], cwd)
     if is_ok(loaded) == false {
-        print("error: " + err_msg(loaded))
+        print_error(err_msg(loaded))
         return 1
     }
     print("Resolved configuration:")
-    print("  sources: " + join(loaded["sources"], " -> "))
+    print_kv(8, "sources", join(loaded["sources"], " -> "))
     print(to_json_pretty(loaded["config"]))
     return 0
 }
@@ -334,42 +334,44 @@ func cmd_config(tokens) {
 func cmd_doctor(tokens) {
     parsed := parse_args(tokens, bool_flag_list())
     if truthy(flag_bool(parsed, "help")) {
-        print("usage: packwrite doctor [--provider <p>] [--config <file>]")
-        print("Checks config, provider, endpoint, API key, and prompt/output state.")
+        print_lines([
+            "usage: packwrite doctor [--provider <p>] [--config <file>]",
+            "Checks config, provider, endpoint, API key, and prompt/output state."
+        ])
         return 0
     }
     cwd := os_getcwd()
     loaded := config_load(parsed["flags"], cwd)
     if is_ok(loaded) == false {
-        print("error: " + err_msg(loaded))
+        print_error(err_msg(loaded))
         return 1
     }
     cfg := loaded["config"]
     print("PackWrite doctor")
-    print("  cwd:             " + cwd)
-    print("  provider:        " + "${cfg["model_provider"]}")
-    print("  model:           " + "${cfg["model_model"]}")
+    print_kv(16, "cwd", cwd)
+    print_kv(16, "provider", "${cfg["model_provider"]}")
+    print_kv(16, "model", "${cfg["model_model"]}")
     endpoint := resolve_endpoint(cfg)
     mut estatus := endpoint
     if is_text(endpoint) == false {
         estatus = "(none — set --endpoint or [model].endpoint)"
     }
-    print("  endpoint:        " + estatus)
+    print_kv(16, "endpoint", estatus)
     mut keystatus := "missing (set PACKWRITE_API_KEY or a provider key)"
     if resolve_api_key(cfg) != "" {
         keystatus = "present (from environment)"
     }
-    print("  api key:         " + keystatus)
+    print_kv(16, "api key", keystatus)
     mut prompt_status := "missing"
     if file_exists(join_path(cwd, cfg["prompt_file"])) {
         prompt_status = "found"
     }
-    print("  prompt file:     " + cfg["prompt_file"] + " (" + prompt_status + ")")
+    print_kv(16, "prompt file", cfg["prompt_file"] + " (" + prompt_status + ")")
     mut agent_status := "absent"
     if path_is_dir(join_path(cwd, cfg["output_dir"])) {
         agent_status = "present"
     }
-    print("  output dir:      " + cfg["output_dir"] + "/ (" + agent_status + ")")
+    print_kv(16, "output dir", cfg["output_dir"] + "/ (" + agent_status + ")")
     return 0
 }
 
@@ -400,6 +402,32 @@ func flag_bool(parsed, name) {
         return parsed["flags"][name]
     }
     return false
+}
+
+func print_error(message) {
+    print("error: " + message)
+}
+
+func print_usage(command) {
+    print("usage: " + command)
+}
+
+func spaces(count) {
+    mut out := ""
+    mut sp_i := 0
+    while sp_i < count {
+        out = out + " "
+        sp_i = sp_i + 1
+    }
+    return out
+}
+
+func print_kv(width, label, value) {
+    mut gap := width - len(label)
+    if gap < 1 {
+        gap = 1
+    }
+    print("  " + label + ":" + spaces(gap) + value)
 }
 
 func print_list(prefix, items) {
@@ -579,12 +607,16 @@ export func dispatch(argv, inject) {
         return cmd_doctor(rest)
     }
     if cmd == "compare" || cmd == "repair-pack" || cmd == "summary" {
-        print("error: '" + cmd + "' is planned for a future version and is not implemented yet.")
-        print("Available commands: init, validate, prompt, config, doctor. Run 'packwrite help'.")
+        print_lines([
+            "error: '" + cmd + "' is planned for a future version and is not implemented yet.",
+            "Available commands: init, validate, prompt, config, doctor. Run 'packwrite help'."
+        ])
         return 2
     }
 
-    print("error: unknown command '" + cmd + "'")
-    print("Run 'packwrite help' for usage.")
+    print_lines([
+        "error: unknown command '" + cmd + "'",
+        "Run 'packwrite help' for usage."
+    ])
     return 2
 }
