@@ -15,7 +15,7 @@ from src.config import config_load, config_defaults
 from src.prompt import prompt_resolve, prompt_read
 from src.repo_context import context_collect, context_render
 from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key
-from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_overwrite, pack_apply
+from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_overwrite, pack_apply, pack_validate_config
 from src.validate import validate_run
 
 VERSION := "0.1.0"
@@ -241,6 +241,11 @@ func cmd_validate(tokens) {
         return 1
     }
     cfg := loaded["config"]
+    cfg_guard := pack_validate_config(cfg)
+    if is_ok(cfg_guard) == false {
+        print_error(err_msg(cfg_guard))
+        return 1
+    }
     out_root := join_path(cwd, cfg["output_dir"])
     vres := validate_run(out_root, cfg)
     if len(vres["errors"]) > 0 {
@@ -284,6 +289,11 @@ func cmd_prompt(tokens) {
         return 1
     }
     cfg := loaded["config"]
+    cfg_guard := pack_validate_config(cfg)
+    if is_ok(cfg_guard) == false {
+        print_error(err_msg(cfg_guard))
+        return 1
+    }
     out_root := join_path(cwd, cfg["output_dir"])
 
     if target == "deepseek" {
@@ -347,6 +357,11 @@ func cmd_doctor(tokens) {
         return 1
     }
     cfg := loaded["config"]
+    cfg_guard := pack_validate_config(cfg)
+    if is_ok(cfg_guard) == false {
+        print_error(err_msg(cfg_guard))
+        return 1
+    }
     print("PackWrite doctor")
     print_kv(16, "cwd", cwd)
     print_kv(16, "provider", "${cfg["model_provider"]}")

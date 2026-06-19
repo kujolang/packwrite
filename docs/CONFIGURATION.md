@@ -38,7 +38,7 @@ features and currently do nothing).
 
 | Key | Type | Default | Flag | Status | Effect |
 | --- | --- | --- | --- | --- | --- |
-| `dir` | string | `"agent"` | `--output` | active | Directory the pack is written to / validated from. |
+| `dir` | string | `"agent"` | `--output` | active | Directory the pack is written to / validated from. Must be a non-empty relative project path with no `.`/`..` or empty path segments. Nested paths such as `"build/agent"` are allowed. |
 | `overwrite` | bool | `false` | `--overwrite` | active | Allow replacing an existing pack dir (clean replace; orphans pruned). |
 | `mode` | string | `"autopilot"` | — | **reserved** | Parsed but not wired (future generation-mode toggle). |
 

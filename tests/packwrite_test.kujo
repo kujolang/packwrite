@@ -17,7 +17,7 @@ from src.config import config_defaults, config_load, config_read_toml, config_re
 from src.prompt import prompt_resolve, prompt_read, absolutize
 from src.repo_context import context_collect, is_excluded, looks_secret, included
 from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, ai_build_options
-from src.pack import pack_parse, pack_parse_with_meta, pack_validate_manifest, pack_apply, safe_target, pack_guard_overwrite, extract_json
+from src.pack import pack_parse, pack_parse_with_meta, pack_validate_manifest, pack_apply, safe_target, pack_guard_overwrite, pack_validate_config, extract_json
 from src.validate import validate_run, extract_phase_refs, required_files
 
 mut passed := 0
@@ -287,6 +287,11 @@ func test_manifest_shape_validation() {
     ]
     tbv := pack_validate_manifest(todo_bad, cfg, WORK)
     check(is_ok(tbv) == false, "manifest validator rejects TODO phase refs that are missing")
+
+    secret_extra := parsed["files"]
+    secret_extra = push(secret_extra, {"path": "agent/.env", "content": "PACKWRITE_API_KEY=secret\n"})
+    sev := pack_validate_manifest(secret_extra, cfg, WORK)
+    check(is_ok(sev) == false, "manifest validator rejects secret-looking generated paths")
 }
 
 func test_no_partial_write_on_invalid_manifest() {
@@ -338,6 +343,20 @@ func test_pack_safety() {
     check(is_ok(escape) == false, "path outside output dir rejected")
     good := safe_target("agent/MASTER.md", cfg, WORK)
     check(is_ok(good), "in-dir path accepted")
+    dotname := safe_target("agent/notes..draft.md", cfg, WORK)
+    check(is_ok(dotname), "non-traversal dotted filename accepted")
+    ambiguous := safe_target("agent//MASTER.md", cfg, WORK)
+    check(is_ok(ambiguous) == false, "ambiguous manifest path rejected")
+
+    badcfg := config_defaults()
+    badcfg["output_dir"] := "../agent"
+    check(is_ok(pack_validate_config(badcfg)) == false, "traversing output_dir rejected")
+    badcfg2 := config_defaults()
+    badcfg2["output_dir"] := "/tmp/agent"
+    check(is_ok(pack_validate_config(badcfg2)) == false, "absolute output_dir rejected")
+    nested := config_defaults()
+    nested["output_dir"] := "build/agent"
+    check(is_ok(pack_validate_config(nested)), "nested relative output_dir accepted")
 }
 
 func test_pack_write_and_validate() {

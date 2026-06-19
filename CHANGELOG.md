@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Added output-directory validation so configured pack directories must stay relative,
+  non-empty, and non-traversing before model calls or filesystem operations.
+- Rejected secret-looking generated manifest paths before dry-runs or writes report
+  success, and made manifest traversal checks segment-aware.
+- Documented production-readiness scope, intentional root-file layout, and the latest
+  follow-up review backlog.
 - Improved contributor/agent guidance around canonical examples, search hygiene, and
   generated/bulk path exclusions.
 - Tightened quickstart and provider recipe snippets so copyable docs examples are
