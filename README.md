@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-165%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-171%20passing-brightgreen.svg)](tests/)
 [![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-orange.svg)](#about-kujo)
 
 **PackWrite is an AI-assisted, local-first workflow-pack compiler that turns project intent into validated agent execution packs.**
@@ -22,6 +22,7 @@ strategy AI → MEGA_PROMPT.md → packwrite → /agent pack → implementation 
 ## Contents
 
 - [Why PackWrite](#why-packwrite)
+- [Readiness and scope](#readiness-and-scope)
 - [Install](#install)
 - [Quickstart](#quickstart)
 - [Commands](#commands)
@@ -52,6 +53,27 @@ separates concerns the way a good project does:
 
 The *shape* of that pack is enforced by deterministic code; the model only fills in
 content. That's what keeps the output reviewable and reusable by downstream agents.
+
+## Readiness and scope
+
+PackWrite is production-usable for local and team workflows that need a repeatable way
+to turn project intent into a validated agent pack. Its strongest guarantees are around
+deterministic structure, offline testability, conservative context collection, staged
+writes, path safety, and explicit CLI failure modes.
+
+It is not a hosted enterprise platform. PackWrite does not provide SaaS auth, org
+policy management, audit-log storage, multi-user coordination, or native support for
+every model provider protocol. Those concerns belong around PackWrite in a larger
+deployment. The CLI stays intentionally small: one local command, one model boundary,
+and a pack that can be reviewed before another agent acts on it.
+
+Current hardening includes:
+
+- Output directories must be relative, non-empty, non-traversing paths.
+- Model manifest paths are validated before dry-runs or writes claim success.
+- Secret-looking generated paths are rejected, not merely warned about after writing.
+- Writes are staged and validated before promotion, with rollback on failed promotion.
+- The full test suite is offline: 131 unit assertions and 40 CLI integration assertions.
 
 ## Install
 
@@ -277,8 +299,9 @@ PackWrite is conservative about what leaves your machine:
   `id_ed25519`, `.git`, `node_modules`, `vendor`, `dist`, `build`, `.next`, `coverage`,
   `target`, `.venv`, and names containing `secret`/`token`); skipped paths are reported.
 - **Writes are sandboxed** to the output directory (absolute/`..`/escaping paths are
-  rejected), nothing destructive runs, and prompt payloads aren't logged without
-  `--verbose`.
+  rejected), configured output directories must be relative project paths, generated
+  secret-looking paths are rejected, nothing destructive runs, and prompt payloads
+  aren't logged without `--verbose`.
 
 Details and reporting: **[SECURITY.md](SECURITY.md)**.
 
@@ -309,6 +332,7 @@ categories stay greppable: `warning (...)`, `! ` (validation warnings), `note:`,
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Every config key, type, default, and flag |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module map, data flow, extension points |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Every error message and its fix |
+| [docs/NEXT_SESSION_REVIEW.md](docs/NEXT_SESSION_REVIEW.md) | Follow-up enhancement backlog from the latest review |
 | [AGENTS.md](AGENTS.md) | Orientation for coding agents working on PackWrite |
 
 Canonical copyable examples live in this README, [docs/HOWTO.md](docs/HOWTO.md), and
@@ -323,10 +347,16 @@ make check      # lint only
 make help       # list tasks
 ```
 
-The suite (125 unit + 40 CLI integration assertions) is **fully offline** — AI calls go
+The suite (131 unit + 40 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
 is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.
+
+Root files are intentionally kept for project entrypoints and governance:
+`packwrite.kujo` is the CLI entrypoint, `bin/packwrite` is the launcher, `Makefile`
+drives developer tasks, `kujo.toml` identifies the Kujo package, and
+`packwrite.example.toml` is the canonical copyable config. Runtime logic lives under
+`src/`; tests live under `tests/`; user/developer docs live under `docs/`.
 
 ## Project status
 

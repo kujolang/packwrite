@@ -82,6 +82,15 @@ both.
 The model proposed writing outside the output directory. PackWrite refuses and writes
 nothing. This is a safety guard; retrying usually yields a clean manifest.
 
+**`Unsafe output dir …`**
+The configured `[output].dir` / `--output` value is absolute, empty, traversing, or
+ambiguous. Use a relative project path such as `agent` or `build/agent`.
+
+**`Manifest validation failed: secret-looking path is not allowed: …`**
+The model tried to generate a file path that looks like a secret (`.env`, key material,
+or names containing `secret`/`token`). PackWrite rejects it before dry-run or write
+success is reported.
+
 ## Validation
 
 `packwrite validate` (and the validation step of `init`) reports **errors** (the pack is

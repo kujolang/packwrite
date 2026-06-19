@@ -22,8 +22,10 @@ PackWrite is designed to minimize what leaves your machine.
   secret-looking path is skipped and surfaced as a warning.
 - **Prompt payloads are not logged** unless you explicitly pass `--verbose`.
 - **Writes are sandboxed to the output directory.** Manifest paths from the model are
-  validated before any write: absolute paths, `..` traversal, and paths escaping the
-  configured output dir (`agent/` by default) are rejected.
+  validated before dry-runs or writes claim success: absolute paths, `..` traversal,
+  ambiguous path segments, generated secret-looking paths, and paths escaping the
+  configured output dir (`agent/` by default) are rejected. The configured output
+  directory itself must be a non-empty relative project path.
 - **No destructive actions.** PackWrite never installs dependencies, never runs
   arbitrary commands, and (on `--overwrite`) only prunes files inside its own output
   directory.
