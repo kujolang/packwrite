@@ -9,6 +9,7 @@
 
 from src.util import truthy, write_text, ensure_dir, parent_of, has_substr, str_find, str_rfind, lines_of, base_of
 from src.errors import err, msg_unparseable, msg_overwrite
+from src.repo_context import looks_secret
 from src.validate import validate_run, required_files, extract_phase_refs
 
 # Extract a candidate JSON object from raw model text.
@@ -98,6 +99,11 @@ export func pack_parse_with_meta(text, meta) {
 
 # Validate manifest shape and path safety before any file write.
 export func pack_validate_manifest(files, cfg, cwd) {
+    cfg_ok := pack_validate_config(cfg)
+    if truthy(cfg_ok["ok"]) == false {
+        return cfg_ok
+    }
+
     if type(files) != "array" || len(files) == 0 {
         return err("Manifest validation failed: files must be a non-empty array")
     }
@@ -124,6 +130,9 @@ export func pack_validate_manifest(files, cfg, cwd) {
 
         if has_key(seen_paths, path) == 1 {
             return err("Manifest validation failed: duplicate file path " + path)
+        }
+        if manifest_path_has_secret(path) {
+            return err("Manifest validation failed: secret-looking path is not allowed: " + path)
         }
         seen_paths[path] := true
         content_by_path[path] := content
@@ -175,11 +184,18 @@ export func pack_validate_manifest(files, cfg, cwd) {
 # Validate a manifest path is safe: relative, no traversal, and inside the
 # configured output dir. Returns {"ok":true,"target":...} or an error.
 export func safe_target(path, cfg, cwd) {
+    cfg_ok := pack_validate_config(cfg)
+    if truthy(cfg_ok["ok"]) == false {
+        return cfg_ok
+    }
     if starts_with(path, "/") {
         return err("Unsafe manifest path (absolute): " + path)
     }
-    if has_substr(path, "..") {
+    if path_has_traversal_segment(path) {
         return err("Unsafe manifest path (traversal): " + path)
+    }
+    if path_has_empty_segment(path) || path_has_current_segment(path) {
+        return err("Unsafe manifest path (ambiguous segment): " + path)
     }
     if ends_with(path, "/") {
         return err("Unsafe manifest path (directory path): " + path)
@@ -194,8 +210,41 @@ export func safe_target(path, cfg, cwd) {
     return {"ok": true, "target": join_path(cwd, path)}
 }
 
+# Validate config paths before a model call or filesystem operation. The output
+# directory may be nested (for example "build/agent") but must stay relative and
+# unambiguous.
+export func pack_validate_config(cfg) {
+    if type(cfg) != "dict" || has_key(cfg, "output_dir") == 0 {
+        return err("Unsafe output dir: missing [output].dir")
+    }
+    out_dir := cfg["output_dir"]
+    if type(out_dir) != "string" || trim(out_dir) == "" {
+        return err("Unsafe output dir: must be a non-empty relative path")
+    }
+    if starts_with(out_dir, "/") {
+        return err("Unsafe output dir (absolute): " + out_dir)
+    }
+    if out_dir == "." || out_dir == ".." {
+        return err("Unsafe output dir: must name a directory under the project root")
+    }
+    if ends_with(out_dir, "/") {
+        return err("Unsafe output dir (trailing slash): " + out_dir)
+    }
+    if path_has_traversal_segment(out_dir) {
+        return err("Unsafe output dir (traversal): " + out_dir)
+    }
+    if path_has_empty_segment(out_dir) || path_has_current_segment(out_dir) {
+        return err("Unsafe output dir (ambiguous segment): " + out_dir)
+    }
+    return {"ok": true}
+}
+
 # Refuse to overwrite an existing output dir unless allowed by config/flag.
 export func pack_guard_overwrite(cfg, cwd) {
+    cfg_ok := pack_validate_config(cfg)
+    if truthy(cfg_ok["ok"]) == false {
+        return cfg_ok
+    }
     out_root := join_path(cwd, cfg["output_dir"])
     if path_is_dir(out_root) && truthy(cfg["output_overwrite"]) == false {
         return err(msg_overwrite(cfg["output_dir"]))
@@ -650,6 +699,58 @@ func bool_word(v) {
         return "true"
     }
     return "false"
+}
+
+func path_has_traversal_segment(path) {
+    parts := split(path, "/")
+    mut pts_i := 0
+    pts_n := len(parts)
+    while pts_i < pts_n {
+        if parts[pts_i] == ".." {
+            return true
+        }
+        pts_i = pts_i + 1
+    }
+    return false
+}
+
+func path_has_current_segment(path) {
+    parts := split(path, "/")
+    mut pcs_i := 0
+    pcs_n := len(parts)
+    while pcs_i < pcs_n {
+        if parts[pcs_i] == "." {
+            return true
+        }
+        pcs_i = pcs_i + 1
+    }
+    return false
+}
+
+func path_has_empty_segment(path) {
+    parts := split(path, "/")
+    mut pes_i := 0
+    pes_n := len(parts)
+    while pes_i < pes_n {
+        if parts[pes_i] == "" {
+            return true
+        }
+        pes_i = pes_i + 1
+    }
+    return false
+}
+
+func manifest_path_has_secret(path) {
+    parts := split(path, "/")
+    mut mps_i := 0
+    mps_n := len(parts)
+    while mps_i < mps_n {
+        if looks_secret(parts[mps_i]) {
+            return true
+        }
+        mps_i = mps_i + 1
+    }
+    return false
 }
 
 func is_phase_path(path) {
