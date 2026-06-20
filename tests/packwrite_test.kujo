@@ -357,6 +357,38 @@ func test_pack_safety() {
     nested := config_defaults()
     nested["output_dir"] := "build/agent"
     check(is_ok(pack_validate_config(nested)), "nested relative output_dir accepted")
+
+    # Hardening: backslash separators and home-expansion prefixes are rejected so
+    # a manifest path cannot escape the sandbox on non-POSIX layouts.
+    back := safe_target("agent\\..\\evil.md", cfg, WORK)
+    check(is_ok(back) == false, "backslash path rejected")
+    home := safe_target("~/secret.md", cfg, WORK)
+    check(is_ok(home) == false, "home-expansion path rejected")
+}
+
+func test_numeric_flag_validation() {
+    badt := config_load({"temperature": "abc"}, WORK)
+    check(is_ok(badt) == false, "non-numeric --temperature rejected")
+    check(has_substr(err_msg(badt), "Invalid --temperature"), "temperature error names the flag")
+
+    ranget := config_load({"temperature": "3.5"}, WORK)
+    check(is_ok(ranget) == false, "out-of-range --temperature rejected")
+    check(has_substr(err_msg(ranget), "between 0.0 and 2.0"), "temperature range error explains bounds")
+
+    okt := config_load({"temperature": "0.2"}, WORK)
+    check(is_ok(okt), "valid --temperature accepted")
+    check(okt["config"]["model_temperature"] == 0.2, "valid --temperature parsed to number")
+
+    bado := config_load({"timeout": "soon"}, WORK)
+    check(is_ok(bado) == false, "non-numeric --timeout rejected")
+    check(has_substr(err_msg(bado), "Invalid --timeout"), "timeout error names the flag")
+
+    zeroo := config_load({"timeout": "0"}, WORK)
+    check(is_ok(zeroo) == false, "non-positive --timeout rejected")
+
+    oko := config_load({"timeout": "60"}, WORK)
+    check(is_ok(oko), "valid --timeout accepted")
+    check(oko["config"]["model_timeout"] == 60, "valid --timeout parsed to number")
 }
 
 func test_pack_write_and_validate() {
@@ -564,6 +596,7 @@ test_provider_presets()
 test_pack_parse()
 test_apply_bad_path()
 test_pack_safety()
+test_numeric_flag_validation()
 test_pack_write_and_validate()
 test_manifest_shape_validation()
 test_no_partial_write_on_invalid_manifest()

@@ -158,17 +158,68 @@ func flag_str(cfg, flags, name, target) {
     return cfg
 }
 
+# Parse a numeric flag string without ever throwing. parse_int/parse_float raise
+# an uncaught runtime error on non-numeric input, which would otherwise crash the
+# whole program; this contains that. Returns {"ok":true,"value":num} or {"ok":false}.
+export func parse_number(v) {
+    if type(v) != "string" {
+        return {"ok": false}
+    }
+    s := trim(v)
+    if s == "" {
+        return {"ok": false}
+    }
+    mut num := 0
+    mut threw := false
+    try {
+        if contains(s, ".") == 1 {
+            num = parse_float(s)
+        } else {
+            num = parse_int(s)
+        }
+    } except e {
+        threw = true
+    }
+    if threw {
+        return {"ok": false}
+    }
+    return {"ok": true, "value": num}
+}
+
+# Validate numeric CLI flags up front so a malformed or out-of-range
+# --temperature / --timeout produces a clear, actionable error instead of an
+# uncaught VM runtime crash. Returns {"ok":true} or an error envelope.
+export func validate_numeric_flags(flags) {
+    if has_key(flags, "temperature") == 1 && is_text(flags["temperature"]) {
+        tv := flags["temperature"]
+        tn := parse_number(tv)
+        if truthy(tn["ok"]) == false {
+            return err("Invalid --temperature value '" + "${tv}" + "': expected a number (for example 0.1).")
+        }
+        if tn["value"] < 0 || tn["value"] > 2 {
+            return err("Invalid --temperature value '" + "${tv}" + "': must be between 0.0 and 2.0.")
+        }
+    }
+    if has_key(flags, "timeout") == 1 && is_text(flags["timeout"]) {
+        ov := flags["timeout"]
+        on := parse_number(ov)
+        if truthy(on["ok"]) == false {
+            return err("Invalid --timeout value '" + "${ov}" + "': expected a positive number of seconds.")
+        }
+        if on["value"] <= 0 {
+            return err("Invalid --timeout value '" + "${ov}" + "': must be greater than 0 seconds.")
+        }
+    }
+    return {"ok": true}
+}
+
 func flag_num(cfg, flags, name, target) {
     if has_key(flags, name) == 0 {
         return cfg
     }
-    v := flags[name]
-    if type(v) == "string" && trim(v) != "" {
-        if contains(v, ".") == 1 {
-            cfg[target] := parse_float(v)
-        } else {
-            cfg[target] := parse_int(v)
-        }
+    pn := parse_number(flags[name])
+    if truthy(pn["ok"]) {
+        cfg[target] := pn["value"]
     }
     return cfg
 }
@@ -205,6 +256,11 @@ export func config_resolve(flags, cwd, gpath) {
         }
         cfg = apply_toml(cfg, pres["value"])
         sources = push(sources, "project:" + ppath)
+    }
+
+    nfe := validate_numeric_flags(flags)
+    if truthy(nfe["ok"]) == false {
+        return nfe
     }
 
     cfg = apply_flags(cfg, flags)

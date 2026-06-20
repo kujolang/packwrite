@@ -197,6 +197,12 @@ export func safe_target(path, cfg, cwd) {
     if path_has_empty_segment(path) || path_has_current_segment(path) {
         return err("Unsafe manifest path (ambiguous segment): " + path)
     }
+    if has_substr(path, "\\") {
+        return err("Unsafe manifest path (backslash separator): " + path)
+    }
+    if starts_with(path, "~") {
+        return err("Unsafe manifest path (home expansion): " + path)
+    }
     if ends_with(path, "/") {
         return err("Unsafe manifest path (directory path): " + path)
     }
