@@ -111,6 +111,27 @@ out="$(KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --provider anthropic 2>&1 || true
 if echo "$out" | grep -q "OpenAI-compatible"; then ok; else bad "anthropic error missing OpenAI-compatible note"; fi
 export PACKWRITE_FAKE_RESPONSE_FILE="$TMP/fake.json"
 
+# --- malformed numeric flags yield a clean error, not a VM crash ---
+out="$(KUJO="$KUJO" "$BIN" config --temperature abc 2>&1 || true)"
+if echo "$out" | grep -q "Invalid --temperature"; then ok; else bad "malformed --temperature not reported cleanly"; fi
+if echo "$out" | grep -qi "Runtime Error"; then bad "malformed --temperature crashed the VM"; else ok; fi
+out="$(KUJO="$KUJO" "$BIN" config --timeout nope 2>&1 || true)"
+if echo "$out" | grep -q "Invalid --timeout"; then ok; else bad "malformed --timeout not reported cleanly"; fi
+# out-of-range temperature is rejected too
+out="$(KUJO="$KUJO" "$BIN" config --temperature 9 2>&1 || true)"
+if echo "$out" | grep -q "between 0.0 and 2.0"; then ok; else bad "out-of-range --temperature not reported"; fi
+
+# --- doctor --strict exits non-zero on a blocking issue; plain doctor exits 0 ---
+# anthropic has no native endpoint preset, so the endpoint is always unresolved here.
+if KUJO="$KUJO" "$BIN" doctor --provider anthropic >/dev/null 2>&1; then ok; else bad "plain doctor should exit 0"; fi
+if KUJO="$KUJO" "$BIN" doctor --provider anthropic --strict >/dev/null 2>&1; then
+  bad "doctor --strict should fail when the endpoint is unresolved"
+else
+  ok
+fi
+strict_out="$(KUJO="$KUJO" "$BIN" doctor --provider anthropic --strict 2>&1 || true)"
+if echo "$strict_out" | grep -q "blocking issue"; then ok; else bad "doctor --strict did not report blocking issues"; fi
+
 # --- every subcommand honors --help (exit 0 + usage, no side effects) ---
 for sub in "init" "validate" "prompt" "config" "doctor"; do
   out="$(KUJO="$KUJO" "$BIN" $sub --help 2>&1)"; code=$?
