@@ -48,8 +48,8 @@ features and currently do nothing).
 | --- | --- | --- | --- | --- | --- |
 | `provider` | string | `"deepseek"` | `--provider` | active | Selects an endpoint preset and the provider-specific API-key env var. |
 | `model` | string | `"deepseek-v4-pro"` | `--model` | active | Model identifier sent to the endpoint. |
-| `temperature` | number | `0.1` | `--temperature` | active | Sampling temperature. |
-| `timeout` | number | `120` | `--timeout` | active | Request timeout in seconds. |
+| `temperature` | number | `0.1` | `--temperature` | active | Sampling temperature. A `--temperature` flag value must be a number in `0.0`–`2.0`; an invalid/out-of-range value fails with a clear error. |
+| `timeout` | number | `120` | `--timeout` | active | Request timeout in seconds. A `--timeout` flag value must be a positive number; an invalid/non-positive value fails with a clear error. |
 | `endpoint` | string | `""` | `--endpoint` | active | Explicit OpenAI-compatible chat-completions URL; overrides the provider preset. |
 
 ### `[repo_context]`

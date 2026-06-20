@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-171%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-191%20passing-brightgreen.svg)](tests/)
 [![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-orange.svg)](#about-kujo)
 
 **PackWrite is an AI-assisted, local-first workflow-pack compiler that turns project intent into validated agent execution packs.**
@@ -147,7 +147,7 @@ New here? Follow the full walkthrough in **[docs/HOWTO.md](docs/HOWTO.md)**.
 | `packwrite prompt deepseek` | Print the implementation-agent prompt |
 | `packwrite prompt codex-review` | Print the reviewer prompt |
 | `packwrite config` | Show the fully resolved configuration and its sources |
-| `packwrite doctor` | Check config, provider, endpoint, API key, and prompt/output state |
+| `packwrite doctor` | Check config, provider, endpoint, API key, and prompt/output state (add `--strict` to exit non-zero on a blocker, for CI) |
 | `packwrite help` / `version` | Help / version |
 
 PackWrite supports top-level help and version commands, including `--help` and `--version`. Subcommands are documented through the main help output and command sections; command-specific `--help` aliases are not currently implemented.
@@ -158,8 +158,8 @@ PackWrite supports top-level help and version commands, including `--help` and `
 --provider <name>     deepseek | openai | local (OpenAI-compatible; others need --endpoint)
 --model <name>        model identifier
 --endpoint <url>      OpenAI-compatible chat-completions URL (overrides the preset)
---temperature <n>     sampling temperature
---timeout <seconds>   request timeout
+--temperature <n>     sampling temperature (0.0–2.0)
+--timeout <seconds>   request timeout (positive integer)
 --output <dir>        output pack directory (default: agent)
 --overwrite           replace an existing pack directory (clean replace: stale files pruned)
 --dry-run             parse + plan but write nothing
@@ -298,10 +298,13 @@ PackWrite is conservative about what leaves your machine:
 - **Secrets are excluded by default** (`.env*`, `*.pem`, `*.key`, `id_rsa`,
   `id_ed25519`, `.git`, `node_modules`, `vendor`, `dist`, `build`, `.next`, `coverage`,
   `target`, `.venv`, and names containing `secret`/`token`); skipped paths are reported.
-- **Writes are sandboxed** to the output directory (absolute/`..`/escaping paths are
-  rejected), configured output directories must be relative project paths, generated
-  secret-looking paths are rejected, nothing destructive runs, and prompt payloads
-  aren't logged without `--verbose`.
+- **Writes are sandboxed** to the output directory (absolute, `..` traversal,
+  backslash-separator, `~` home-expansion, ambiguous-segment, and escaping paths are
+  all rejected), configured output directories must be relative project paths,
+  generated secret-looking paths are rejected, nothing destructive runs, and prompt
+  payloads aren't logged without `--verbose`.
+- **Malformed CLI input fails cleanly** — bad or out-of-range `--temperature` /
+  `--timeout` values return an actionable error instead of crashing the runtime.
 
 Details and reporting: **[SECURITY.md](SECURITY.md)**.
 
@@ -332,7 +335,8 @@ categories stay greppable: `warning (...)`, `! ` (validation warnings), `note:`,
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Every config key, type, default, and flag |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module map, data flow, extension points |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Every error message and its fix |
-| [docs/NEXT_SESSION_REVIEW.md](docs/NEXT_SESSION_REVIEW.md) | Follow-up enhancement backlog from the latest review |
+| [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) | Current prioritized backlog for upcoming work |
+| [docs/NEXT_SESSION_REVIEW.md](docs/NEXT_SESSION_REVIEW.md) | Prior readiness-review record (June 19) |
 | [AGENTS.md](AGENTS.md) | Orientation for coding agents working on PackWrite |
 
 Canonical copyable examples live in this README, [docs/HOWTO.md](docs/HOWTO.md), and
@@ -347,7 +351,7 @@ make check      # lint only
 make help       # list tasks
 ```
 
-The suite (131 unit + 40 CLI integration assertions) is **fully offline** — AI calls go
+The suite (144 unit + 47 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
 is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.

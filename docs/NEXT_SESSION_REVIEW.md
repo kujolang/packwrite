@@ -2,6 +2,10 @@
 
 Review date: June 19, 2026
 
+> **Superseded by [docs/NEXT_STEPS.md](NEXT_STEPS.md) (June 20).** This file is kept as a
+> dated record; the still-open candidates below were carried forward and deduplicated
+> into NEXT_STEPS.md, which is the current source of truth.
+
 This pass found PackWrite to be solid for local-first production use: deterministic
 validation, offline tests, staged writes, provider isolation, and honest docs are all
 in place. It should not be described as a full enterprise platform yet. The next useful

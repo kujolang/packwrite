@@ -134,6 +134,19 @@ lacking score/repair cues; potential placeholder text.
 Your `packwrite.toml` (or global config) is malformed. Validate the TOML syntax. Use
 `packwrite config` to see which sources were loaded.
 
+**`Invalid --temperature value '<x>': expected a number …` / `… must be between 0.0 and 2.0.`**
+`--temperature` must be a number in `0.0`–`2.0` (e.g. `0.1`).
+
+**`Invalid --timeout value '<x>': expected a positive number …` / `… must be greater than 0 seconds.`**
+`--timeout` must be a positive integer number of seconds (e.g. `120`).
+
+## CI / health checks
+
+**`doctor: <n> blocking issue(s) found (strict mode):`** (exit 1) — `packwrite doctor
+--strict` exits non-zero when a blocker would stop `init`: no resolvable endpoint, no
+API key in the environment, or a missing mega prompt file. Plain `packwrite doctor`
+always exits `0` and is purely informational; use `--strict` in CI gates.
+
 ## Still stuck?
 
 Run with `--verbose` for extra diagnostics, confirm `kujo check` passes on a dev build,
