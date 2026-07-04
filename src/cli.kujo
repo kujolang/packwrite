@@ -142,7 +142,10 @@ func cmd_init(tokens, inject) {
     }
     save_raw_response_if_requested(parsed, cwd, gen["text"])
     if debug {
-        print("debug: provider=" + "${gen["provider"]}" + ", model=" + "${gen["model"]}" + ", finish_reason=" + safe_value(gen, "finish_reason", "unknown") + ", response_length=" + "${len(gen["text"])}")
+        debug_line := "debug: provider=" + "${gen["provider"]}" + ", model=" + "${gen["model"]}"
+        debug_line = debug_line + ", finish_reason=" + safe_value(gen, "finish_reason", "unknown")
+        debug_line = debug_line + ", response_length=" + "${len(gen["text"])}"
+        print(debug_line)
     }
 
     # 6. Parse and validate the manifest.
