@@ -1,9 +1,8 @@
 # PackWrite
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-191%20passing-brightgreen.svg)](tests/)
-[![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-orange.svg)](#about-kujo)
+[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/packwrite)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
 **PackWrite is an AI-assisted, local-first workflow-pack compiler that turns project intent into validated agent execution packs.**
 
