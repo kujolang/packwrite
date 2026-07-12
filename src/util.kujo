@@ -101,13 +101,33 @@ export func read_text(path) {
     return {"ok": true, "text": text}
 }
 
-# Write text to `path`, overwriting if it already exists. The VM rejects the
-# write_file overwrite flag, so delete-then-write.
-export func write_text(path, content) {
-    if file_exists(path) {
-        delete_file(path)
+# Write through a sibling temporary file, then promote it atomically. The
+# runtime's overwrite flag is unreliable, so the caller supplies the intended
+# overwrite policy explicitly and the target is never written in place.
+export func write_file_atomic(path, content, overwrite) {
+    if type(path) != "string" || trim(path) == "" {
+        return false
     }
-    write_file(path, content)
+    if path_exists(path) && path_is_symlink(path) {
+        return false
+    }
+    if file_exists(path) && truthy(overwrite) == false {
+        return false
+    }
+    tmp := path + ".tmp-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 999999))
+    try {
+        if file_exists(tmp) {
+            delete_file(tmp)
+        }
+        write_file(tmp, to_string(content))
+        rename_file(tmp, path)
+        return true
+    } except err {
+        if file_exists(tmp) {
+            delete_file(tmp)
+        }
+        return false
+    }
 }
 
 # Create a directory tree one segment at a time (create_dir handles nested dirs

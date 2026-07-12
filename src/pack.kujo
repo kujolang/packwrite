@@ -7,7 +7,7 @@
 #
 # Manifest contract: { "files": [ { "path": "...", "content": "..." }, ... ] }
 
-from src.util import truthy, write_text, ensure_dir, parent_of, has_substr, str_find, str_rfind, lines_of, base_of
+from src.util import truthy, ensure_dir, parent_of, has_substr, str_find, str_rfind, lines_of, base_of, write_file_atomic
 from src.errors import err, msg_unparseable, msg_overwrite
 from src.repo_context import looks_secret
 from src.validate import validate_run, required_files, extract_phase_refs
@@ -312,7 +312,7 @@ export func pack_apply(files, cfg, cwd, dry_run) {
         if parent != "" {
             ensure_dir(parent)
         }
-        write_text(staged_target, pl["content"])
+        write_file_atomic(staged_target, pl["content"], true)
         wi = wi + 1
     }
 
