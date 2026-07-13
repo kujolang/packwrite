@@ -17,51 +17,13 @@ from src.repo_context import context_collect, context_render
 from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key
 from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_overwrite, pack_apply, pack_validate_config
 from src.validate import validate_run
+from cli import parse_args
 
 VERSION := "0.1.0"
 
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
-
-func parse_args(tokens, bool_flags) {
-    mut positionals := []
-    mut flags := {}
-    mut i := 0
-    n := len(tokens)
-    while i < n {
-        tok := tokens[i]
-        if starts_with(tok, "--") {
-            key := substring(tok, 2, len(tok))
-            if in_list(bool_flags, key) {
-                flags[key] := true
-            } else {
-                if i + 1 < n && starts_with(tokens[i + 1], "--") == false {
-                    flags[key] := tokens[i + 1]
-                    i = i + 1
-                } else {
-                    flags[key] := ""
-                }
-            }
-        } else {
-            positionals = push(positionals, tok)
-        }
-        i = i + 1
-    }
-    return {"positionals": positionals, "flags": flags}
-}
-
-func in_list(arr, value) {
-    mut il_i := 0
-    il_n := len(arr)
-    while il_i < il_n {
-        if arr[il_i] == value {
-            return true
-        }
-        il_i = il_i + 1
-    }
-    return false
-}
 
 func first_positional(parsed) {
     p := parsed["positionals"]
