@@ -81,11 +81,11 @@ interpreter. You need a `kujo` binary; point the launcher at it with `KUJO`:
 
 ```bash
 # from anywhere, pointing KUJO at your kujo binary
-KUJO=/path/to/kujo/target/release/kujo /path/to/packwrite/bin/packwrite --help
+KUJO=kujo /path/to/packwrite/bin/packwrite --help
 
 # or install the launcher on your PATH and set KUJO in your shell profile
 make install                      # symlinks bin/packwrite into /usr/local/bin
-export KUJO=/path/to/kujo/target/release/kujo
+export KUJO=kujo
 packwrite --help
 ```
 

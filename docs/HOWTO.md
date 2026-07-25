@@ -5,7 +5,7 @@ This is an end-to-end walkthrough of the PackWrite workflow. It assumes you have
 [README](../README.md) for install details.
 
 ```bash
-export KUJO=/path/to/kujo/target/release/kujo
+export KUJO=kujo
 alias packwrite='/path/to/packwrite/bin/packwrite'   # convenience for this guide
 ```
 

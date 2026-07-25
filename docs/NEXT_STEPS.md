@@ -111,7 +111,7 @@ names the module(s) it touches so it can be picked up cold.
 
 ## Notes for whoever picks this up
 
-- Run `make test KUJO=/path/to/kujo/target/release/kujo` before and after — keep the
+- Run `make test KUJO=kujo` before and after — keep the
   suite green (currently 144 unit + 47 CLI integration, fully offline).
 - Preserve exact CLI help text: `tests/cli_integration.sh` treats it as a contract.
 - Honor the Kujo runtime gotchas in `AGENTS.md`/`CONTRIBUTING.md` (one `for` per scope,

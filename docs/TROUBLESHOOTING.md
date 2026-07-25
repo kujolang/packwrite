@@ -10,7 +10,7 @@ off — it summarizes provider, endpoint, API key, and prompt/output state.
 **`packwrite: cannot find the Kujo interpreter ('kujo').`** (exit 127)
 The `bin/packwrite` wrapper can't find a Kujo binary. Set `KUJO` to its path:
 ```bash
-export KUJO=/path/to/kujo/target/release/kujo
+export KUJO=kujo
 ```
 
 ## Mega prompt
