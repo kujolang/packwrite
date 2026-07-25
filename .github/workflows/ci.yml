@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       # PackWrite is interpreted by the Kujo runtime, which is not bundled here.
       # Wire ONE of the following for your environment, then delete the others:
@@ -23,7 +23,7 @@ jobs:
       #         chmod +x /usr/local/bin/kujo
       #
       #   (b) Build Kujo from a sibling checkout (set KUJO_REPO secret/var):
-      #       - uses: actions/checkout@v4
+      #       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       #         with: { repository: "${{ vars.KUJO_REPO }}", path: kujo-src }
       #       - run: cargo build --release --manifest-path kujo-src/Cargo.toml
       #       - run: echo "$PWD/kujo-src/target/release" >> "$GITHUB_PATH"
