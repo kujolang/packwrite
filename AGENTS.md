@@ -11,7 +11,7 @@ behavior contracts, not copy-style examples.
 
 ```
 packwrite.kujo        entrypoint (parses argv -> src/cli main -> exit code)
-bin/packwrite         bash wrapper (set KUJO=kujo for the interpreter)
+bin/packwrite         bash wrapper (uses `kujo` from PATH by default)
 src/
   util.kujo           predicates, string/list helpers, safe fs read/write
   errors.kujo         {"ok":bool,...} envelopes + canonical messages
@@ -54,7 +54,7 @@ tests/
 ## Tests
 
 ```bash
-make test KUJO=kujo   # or: KUJO=... ./tests/run.sh
+make test   # or: KUJO=/path/to/kujo ./tests/run.sh
 ```
 
 Fully offline (144 unit + 47 CLI integration assertions). AI calls go through the

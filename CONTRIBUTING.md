@@ -26,28 +26,19 @@ For PackWrite specifically:
 
 ## Local Setup
 
-Use the Kujo runtime expected by this repository. Most repos support one of
-these environment variables:
+Install Kujo so the `kujo` command is available on your `PATH`:
 
 ```bash
-export KUJO_BIN=kujo
-export KUJO=kujo
+kujo --version
 ```
 
-PackWrite is written in Kujo and run by the Kujo interpreter. Point the launcher
-at it with `KUJO`:
-
-```bash
-export KUJO=kujo
-```
-
-If `kujo` is already on your `PATH`, no extra setup may be needed.
+PackWrite is written in Kujo and run by the Kujo interpreter.
 
 Project layout:
 
 ```text
 packwrite.kujo          entrypoint: parse argv -> src/cli main -> exit code
-bin/packwrite           bash launcher that honors $KUJO and preserves cwd
+bin/packwrite           bash launcher that uses `kujo` by default and preserves cwd
 src/
   util.kujo             predicates, char-safe string helpers, safe fs read/write
   errors.kujo           result envelopes and canonical user messages
@@ -160,7 +151,7 @@ make test
 or directly:
 
 ```bash
-KUJO=kujo ./tests/run.sh
+./tests/run.sh
 ```
 
 The test suite is fully offline. AI calls go through the fake-response seam

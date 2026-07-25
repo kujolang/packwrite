@@ -77,15 +77,14 @@ Current hardening includes:
 ## Install
 
 PackWrite is written in the [Kujo language](#about-kujo) and run by the Kujo
-interpreter. You need a `kujo` binary; point the launcher at it with `KUJO`:
+interpreter. Install Kujo so the `kujo` command is available on your `PATH`:
 
 ```bash
-# from anywhere, pointing KUJO at your kujo binary
-KUJO=kujo /path/to/packwrite/bin/packwrite --help
+# from anywhere
+/path/to/packwrite/bin/packwrite --help
 
-# or install the launcher on your PATH and set KUJO in your shell profile
+# or install the launcher on your PATH
 make install                      # symlinks bin/packwrite into /usr/local/bin
-export KUJO=kujo
 packwrite --help
 ```
 

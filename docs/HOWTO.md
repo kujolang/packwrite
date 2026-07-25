@@ -1,11 +1,10 @@
 # HOWTO: From idea to an agent-ready pack
 
 This is an end-to-end walkthrough of the PackWrite workflow. It assumes you have a
-`kujo` binary and have set `KUJO` (or put `bin/packwrite` on your `PATH`). See the
+`kujo` binary on your `PATH` (or put `bin/packwrite` on your `PATH`). See the
 [README](../README.md) for install details.
 
 ```bash
-export KUJO=kujo
 alias packwrite='/path/to/packwrite/bin/packwrite'   # convenience for this guide
 ```
 
