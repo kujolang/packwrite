@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Docs
 
+- Added launch-readiness Spec and Eval metadata for the Kujo prelaunch review.
 - Documented production-readiness scope, intentional root-file layout, and the latest
   follow-up review backlog.
 - Improved contributor/agent guidance around canonical examples, search hygiene, and

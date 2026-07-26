@@ -1,0 +1,27 @@
+{
+  "name": "packwrite-launch-readiness",
+  "version": "0.1.0",
+  "tests": [
+    {
+      "name": "PackWrite help succeeds",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd /Users/robertdevore/2026/Kujolang/kujo-repos/packwrite && packwrite --help"
+      }
+    },
+    {
+      "name": "PackWrite version succeeds",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd /Users/robertdevore/2026/Kujolang/kujo-repos/packwrite && packwrite version"
+      }
+    },
+    {
+      "name": "PackWrite offline test suite succeeds",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd /Users/robertdevore/2026/Kujolang/kujo-repos/packwrite && make test"
+      }
+    }
+  ]
+}

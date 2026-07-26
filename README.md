@@ -1,6 +1,6 @@
 # PackWrite
 
-[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/packwrite)
+[![Version](https://img.shields.io/badge/version-0.1.0-black)](https://github.com/kujolang/packwrite)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
@@ -55,16 +55,17 @@ content. That's what keeps the output reviewable and reusable by downstream agen
 
 ## Readiness and scope
 
-PackWrite is production-usable for local and team workflows that need a repeatable way
-to turn project intent into a validated agent pack. Its strongest guarantees are around
+PackWrite is locally usable for individual and team workflows that need a repeatable
+way to turn project intent into a validated agent pack. Its strongest guarantees are around
 deterministic structure, offline testability, conservative context collection, staged
 writes, path safety, and explicit CLI failure modes.
 
-It is not a hosted enterprise platform. PackWrite does not provide SaaS auth, org
-policy management, audit-log storage, multi-user coordination, or native support for
-every model provider protocol. Those concerns belong around PackWrite in a larger
-deployment. The CLI stays intentionally small: one local command, one model boundary,
-and a pack that can be reviewed before another agent acts on it.
+It is not a hosted production or enterprise platform. PackWrite does not provide SaaS
+auth, org policy management, audit-log storage, multi-user coordination, signing,
+notarization, deployment controls, or native support for every model provider protocol.
+Those concerns belong around PackWrite in a larger deployment. The CLI stays
+intentionally small: one local command, one model boundary, and a pack that can be
+reviewed before another agent acts on it.
 
 Current hardening includes:
 
