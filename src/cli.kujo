@@ -19,7 +19,7 @@ from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_ov
 from src.validate import validate_run
 from cli import parse_args
 
-VERSION := "0.1.0"
+VERSION := "1.0.0"
 
 # ---------------------------------------------------------------------------
 # Argument parsing

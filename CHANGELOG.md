@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-08
+
+PackWrite 1.0 stabilizes the local prompt-to-agent-pack compiler, including
+offline fake-response validation, staged path-safe writes, deterministic pack
+validation, and the documented CLI/configuration contracts.
+
 ### Added
 
 - `packwrite doctor --strict` exits non-zero when a blocking issue would stop `init`
