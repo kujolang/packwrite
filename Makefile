@@ -34,8 +34,8 @@ integration: ## Run only the CLI integration tests
 
 .PHONY: smoke
 smoke: ## Quick sanity check: print help and version
-	@$(KUJO) run packwrite.kujo -- version
-	@$(KUJO) run packwrite.kujo -- help >/dev/null && echo "help: ok"
+	@KUJO="$(KUJO)" ./bin/packwrite version
+	@KUJO="$(KUJO)" ./bin/packwrite help >/dev/null && echo "help: ok"
 
 .PHONY: install
 install: ## Symlink bin/packwrite into PREFIX/bin (default /usr/local/bin)

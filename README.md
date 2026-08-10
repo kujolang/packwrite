@@ -73,7 +73,7 @@ Current hardening includes:
 - Model manifest paths are validated before dry-runs or writes claim success.
 - Secret-looking generated paths are rejected, not merely warned about after writing.
 - Writes are staged and validated before promotion, with rollback on failed promotion.
-- The full test suite is offline: 131 unit assertions and 40 CLI integration assertions.
+- The full test suite is offline: 144 unit assertions and 47 CLI integration assertions.
 
 ## Install
 
