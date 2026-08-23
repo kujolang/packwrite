@@ -433,33 +433,18 @@ func print_list(prefix, items) {
 }
 
 func print_lines(lines) {
-    mut ln_i := 0
-    ln_n := len(lines)
-    while ln_i < ln_n {
-        print("${lines[ln_i]}")
-        ln_i = ln_i + 1
-    }
+    print_list("", lines)
 }
 
 func print_paths(items) {
-    mut pp_i := 0
-    pp_n := len(items)
-    while pp_i < pp_n {
-        print("    " + "${items[pp_i]}")
-        pp_i = pp_i + 1
-    }
+    print_list("    ", items)
 }
 
 func print_warnings(label, items) {
     if type(items) != "array" || len(items) == 0 {
         return
     }
-    mut pw_i := 0
-    pw_n := len(items)
-    while pw_i < pw_n {
-        print("warning (" + label + "): " + "${items[pw_i]}")
-        pw_i = pw_i + 1
-    }
+    print_list("warning (" + label + "): ", items)
 }
 
 # ---------------------------------------------------------------------------
@@ -467,21 +452,27 @@ func print_warnings(label, items) {
 # ---------------------------------------------------------------------------
 
 func default_deepseek_prompt() {
-    mut p := "# Autonomous Implementation Prompt\n\n"
-    p = p + "You are the autonomous implementation agent for this repository.\n"
-    p = p + "Read agent/MASTER.md, agent/TODO.md, agent/HANDOFF.md, agent/DECISIONS.md, and agent/REVIEW_CHECKLIST.md.\n"
-    p = p + "Find the first incomplete phase in agent/TODO.md and read its phase file under agent/phases/.\n"
-    p = p + "Implement only that phase, then update HANDOFF.md, DECISIONS.md (if needed), REVIEW_CHECKLIST.md, and mark the TODO item complete.\n"
-    p = p + "Continue automatically to the next incomplete phase. Do not wait for human approval between phases.\n"
-    p = p + "Stop only for blockers: missing information, unsafe/destructive steps, secrets, unrecoverable test failures, or phase/master conflicts.\n"
-    return p
+    return join([
+        "# Autonomous Implementation Prompt",
+        "",
+        "You are the autonomous implementation agent for this repository.",
+        "Read agent/MASTER.md, agent/TODO.md, agent/HANDOFF.md, agent/DECISIONS.md, and agent/REVIEW_CHECKLIST.md.",
+        "Find the first incomplete phase in agent/TODO.md and read its phase file under agent/phases/.",
+        "Implement only that phase, then update HANDOFF.md, DECISIONS.md (if needed), REVIEW_CHECKLIST.md, and mark the TODO item complete.",
+        "Continue automatically to the next incomplete phase. Do not wait for human approval between phases.",
+        "Stop only for blockers: missing information, unsafe/destructive steps, secrets, unrecoverable test failures, or phase/master conflicts.",
+        ""
+    ], "\n")
 }
 
 func default_codex_prompt() {
-    mut p := "# Reviewer Prompt\n\n"
-    p = p + "You are an independent review agent. Read the mega prompt, agent/MASTER.md, and the full agent/ pack, then inspect the implementation.\n"
-    p = p + "Produce: an overall score out of 10, category scores, a summary of what was built, a comparison against the intended behavior, scope drift, bugs, missing tests, security/privacy issues, and a step-by-step repair checklist suitable for a coding agent.\n"
-    return p
+    return join([
+        "# Reviewer Prompt",
+        "",
+        "You are an independent review agent. Read the mega prompt, agent/MASTER.md, and the full agent/ pack, then inspect the implementation.",
+        "Produce: an overall score out of 10, category scores, a summary of what was built, a comparison against the intended behavior, scope drift, bugs, missing tests, security/privacy issues, and a step-by-step repair checklist suitable for a coding agent.",
+        ""
+    ], "\n")
 }
 
 # ---------------------------------------------------------------------------
