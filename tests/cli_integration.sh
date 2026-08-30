@@ -203,7 +203,7 @@ if echo "$out" | grep -qi "usage: packwrite prompt"; then ok; else bad "prompt d
 # Static help output is an agent-facing contract, so keep the full text exact.
 emdash="$(printf '\342\200\224')"
 help_expected="$(cat <<EOF
-packwrite 1.0.0 $emdash compile a mega prompt into a validated /agent pack
+packwrite 1.1.0 $emdash compile a mega prompt into a validated /agent pack
 
 Usage: packwrite <command> [arguments]
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-30
+
 ### CI
 
 - Replaced the hosted-CI runtime placeholder with the pinned Kujo v1.1.0 Linux x64
@@ -21,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixture validated by the offline suite.
 - Renamed the command module to avoid a Kujo v1.1 module-name collision with the
   first-party `cli` parser package on Linux.
+- Added a repeatable official-release checklist covering version synchronization,
+  verification, hosted gates, tagging, publication, and post-release checks.
 
 ### Fixed
 

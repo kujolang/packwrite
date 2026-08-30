@@ -1,6 +1,6 @@
 # PackWrite
 
-[![Version](https://img.shields.io/badge/version-1.0.0-black)](https://github.com/kujolang/packwrite)
+[![Version](https://img.shields.io/badge/version-1.1.0-black)](https://github.com/kujolang/packwrite/releases/tag/v1.1.0)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
@@ -341,6 +341,7 @@ categories stay greppable: `warning (...)`, `! ` (validation warnings), `note:`,
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Every error message and its fix |
 | [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) | Current prioritized backlog for upcoming work |
 | [docs/PROVIDERS.md](docs/PROVIDERS.md) | Provider and gateway compatibility matrix |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Repeatable official-release gate |
 | [AGENTS.md](AGENTS.md) | Orientation for coding agents working on PackWrite |
 
 Canonical copyable examples live in this README, [docs/HOWTO.md](docs/HOWTO.md), and

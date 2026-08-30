@@ -32,6 +32,8 @@ future implementation still requires normal compatibility and regression review.
 - Added age-gated cleanup for stale PackWrite stage directories and redundant backups;
   recovery backups are retained whenever the final output directory is absent.
 - Added a provider/gateway compatibility matrix with explicit certification limits.
+- Added an official-release checklist covering version synchronization, local and
+  hosted verification, annotated tags, GitHub publication, and post-release checks.
 
 ## High value
 

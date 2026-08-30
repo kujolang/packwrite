@@ -50,6 +50,7 @@ PackWrite is designed to minimize what leaves your machine.
 
 | Version | Supported |
 | ------- | --------- |
+| 1.1.x   | ✅        |
 | 1.0.x   | ✅        |
 
 ## Reporting a vulnerability
