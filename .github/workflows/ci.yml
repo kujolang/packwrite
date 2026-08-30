@@ -14,28 +14,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
-      # PackWrite is interpreted by the Kujo runtime, which is not bundled here.
-      # Wire ONE of the following for your environment, then delete the others:
-      #
-      #   (a) Download a published Kujo release artifact:
-      #       run: |
-      #         curl -fsSL "$KUJO_RELEASE_URL" -o /usr/local/bin/kujo
-      #         chmod +x /usr/local/bin/kujo
-      #
-      #   (b) Build Kujo from a sibling checkout (set KUJO_REPO secret/var):
-      #       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      #         with: { repository: "${{ vars.KUJO_REPO }}", path: kujo-src }
-      #       - run: cargo build --release --manifest-path kujo-src/Cargo.toml
-      #       - run: echo "$PWD/kujo-src/target/release" >> "$GITHUB_PATH"
-      #
-      # The step below fails fast with instructions until a Kujo binary is provided,
-      # so CI never reports a misleading green without actually running the suite.
-      - name: Ensure Kujo is available
+      - name: Install pinned Kujo runtime
+        env:
+          KUJO_VERSION: v1.1.0
+          KUJO_LINUX_X64_SHA256: 6cff72d35ed0b43daaf43bb50e2925e86ed72ed0e0e2433db46d2d069f44af91
         run: |
-          if ! command -v kujo >/dev/null 2>&1; then
-            echo "::error::No 'kujo' binary on PATH. Wire the 'Set up Kujo' step in .github/workflows/ci.yml."
-            exit 1
-          fi
+          set -euo pipefail
+          archive="kujo-${KUJO_VERSION}-linux-x64.tar.gz"
+          url="https://github.com/kujolang/kujo/releases/download/${KUJO_VERSION}/${archive}"
+          curl --fail --location --silent --show-error --retry 3 "$url" --output "$RUNNER_TEMP/$archive"
+          printf '%s  %s\n' "$KUJO_LINUX_X64_SHA256" "$RUNNER_TEMP/$archive" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/kujo-bin"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/kujo-bin"
+          chmod 0755 "$RUNNER_TEMP/kujo-bin/kujo"
+          echo "$RUNNER_TEMP/kujo-bin" >> "$GITHUB_PATH"
+
+      - name: Verify Kujo runtime
+        run: |
+          command -v kujo
           kujo --version
 
       - name: Lint (kujo check)
