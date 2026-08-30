@@ -38,7 +38,7 @@ features and currently do nothing).
 
 | Key | Type | Default | Flag | Status | Effect |
 | --- | --- | --- | --- | --- | --- |
-| `dir` | string | `"agent"` | `--output` | active | Directory the pack is written to / validated from. Must be a non-empty relative project path with no `.`/`..` or empty path segments. Nested paths such as `"build/agent"` are allowed. |
+| `dir` | string | `"agent"` | `--output` | active | Directory the pack is written to / validated from. Must be a non-empty relative project path (maximum 4096 bytes) with no control characters, backslashes, home expansion, `.`/`..`, empty segments, or existing symlink components. Nested paths such as `"build/agent"` are allowed. |
 | `overwrite` | bool | `false` | `--overwrite` | active | Allow replacing an existing pack dir (clean replace; orphans pruned). |
 | `mode` | string | `"autopilot"` | — | **reserved** | Parsed but not wired (future generation-mode toggle). |
 
@@ -50,7 +50,7 @@ features and currently do nothing).
 | `model` | string | `"deepseek-v4-pro"` | `--model` | active | Model identifier sent to the endpoint. |
 | `temperature` | number | `0.1` | `--temperature` | active | Sampling temperature. A `--temperature` flag value must be a number in `0.0`–`2.0`; an invalid/out-of-range value fails with a clear error. |
 | `timeout` | number | `120` | `--timeout` | active | Request timeout in seconds. A `--timeout` flag value must be a positive number; an invalid/non-positive value fails with a clear error. |
-| `endpoint` | string | `""` | `--endpoint` | active | Explicit OpenAI-compatible chat-completions URL; overrides the provider preset. |
+| `endpoint` | string | `""` | `--endpoint` | active | Explicit OpenAI-compatible chat-completions URL; overrides the provider preset. Must use `http://` or `https://`, contain no line controls, and contain no embedded credentials. |
 
 ### `[repo_context]`
 
@@ -88,11 +88,15 @@ never sends file contents beyond a single README summary line. See [SECURITY](..
 | Flag | Status | Effect |
 | --- | --- | --- |
 | `--dry-run` | active | Run the full pipeline but write nothing; print the planned files. |
-| `--verbose` | active | Print extra diagnostics (to stdout — the runtime has no stderr). |
+| `--verbose` | active | Print extra diagnostics such as prompt size (to stdout — the runtime has no stderr); prompt content is never printed. |
 | `--debug` | active | Print sanitized provider/model/finish-reason/length diagnostics during `init`. |
-| `--save-raw-response <file>` | active | Save raw model response to a file (warning: may contain sensitive data). |
+| `--save-raw-response <file>` | active | Atomically save raw model response with owner-only permissions (warning: may contain sensitive data). Existing files and symlinks are refused. |
 | `--config <file>` | active | Use a specific `packwrite.toml` instead of the one in the cwd. |
 | `--run-name <name>` | **reserved** | Sets `run_name`, reserved for the deferred `compare` command. |
+
+Wrong-but-parseable TOML types fail during configuration resolution. PackWrite does not
+coerce strings such as `overwrite = "false"` into booleans or accept scalar values for
+array keys.
 
 ## Environment variables
 

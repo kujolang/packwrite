@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Nested output directories such as `build/agent` now stage, promote, roll back, and
+  clean-replace correctly.
+- Wrong TOML types and invalid phase bounds fail as actionable configuration errors
+  instead of being silently coerced or reaching runtime type failures.
+- Large invalid non-JSON provider responses no longer trigger unbounded full-response
+  diagnostic sanitization.
+
+### Security
+
+- Reject output symlink ancestors, path control characters, and malformed/credentialed
+  endpoints, and bound model-output amplification before writes or network calls.
+- Raw model-response saves are atomic, owner-only, and no-overwrite.
+- Provider error bodies and control-bearing repository filenames are excluded from
+  default terminal/model-visible output.
+
+### Tests
+
+- Added nested-output, symlink-boundary, config-type, endpoint, resource-limit,
+  prompt-context, and raw-response regression coverage.
+- Added Bash syntax checking to the default `make test` gate.
+
 ## [1.0.0] - 2026-08-08
 
 PackWrite 1.0 stabilizes the local prompt-to-agent-pack compiler, including

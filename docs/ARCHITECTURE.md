@@ -28,7 +28,7 @@ the model only fills in *content*.
 | `src/prompt.kujo` | Mega-prompt discovery and reading. | `prompt_resolve`, `prompt_read` |
 | `src/repo_context.kujo` | Lightweight, redacted repo summary (include/exclude, secret skip). | `context_collect`, `context_render` |
 | `src/ai.kujo` | The model boundary: adapter over `ai_chat`, endpoint/key resolution, distillation-prompt builder. | `ai_generate`, `ai_distillation_prompt`, `resolve_endpoint` |
-| `src/pack.kujo` | Manifest parse, config/path safety, overwrite/prune, write/dry-run. | `pack_parse`, `pack_apply`, `pack_guard_overwrite`, `pack_validate_config`, `safe_target` |
+| `src/pack.kujo` | Manifest/resource limits, config/path/symlink safety, overwrite/prune, staged write/dry-run. | `pack_parse`, `pack_apply`, `pack_guard_overwrite`, `pack_validate_config`, `safe_target` |
 | `src/validate.kujo` | Deterministic pack validation (no AI). | `validate_run`, `required_files` |
 | `src/util.kujo` | Predicates, char-safe string helpers, safe fs read/write. | `truthy`, `str_find`, `write_text`, … |
 | `src/errors.kujo` | Result envelopes and canonical user-facing messages. | `ok`, `err`, `is_ok`, `msg_*` |

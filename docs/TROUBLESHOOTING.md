@@ -34,10 +34,16 @@ You selected a provider whose native API isn't OpenAI-compatible (e.g. `anthropi
 The adapter only speaks the OpenAI chat protocol. Point `--endpoint` at a compatible
 gateway. See the README's *Model / provider selection* section.
 
-**`… The AI SDK call failed.` / `… <transport error>` / `The AI SDK returned an empty response.`**
+**`… The AI SDK request failed.` / `… The AI SDK call failed.` / `The AI SDK returned an empty response.`**
 The request reached the adapter but failed. Check the endpoint URL, that
 `PACKWRITE_API_KEY` (or a provider key) is exported, network access, and that the model
 name is valid for that endpoint. `packwrite doctor` shows whether a key is detected.
+Provider error bodies are not echoed because they are untrusted and may contain
+sensitive or terminal-active data.
+
+**`The configured endpoint must use http:// or https://.` / `…must not contain embedded credentials.`**
+Use a plain OpenAI-compatible HTTP(S) endpoint. Keep credentials in the documented
+environment variables, not in URL userinfo.
 
 ## Model response
 
@@ -52,6 +58,10 @@ The model didn't return the expected JSON manifest. Common causes and fixes:
 | `("files" must be a non-empty array)` | Empty `files`. | Retry; check the mega prompt isn't empty. |
 | `(file entry N missing path/content)` | An entry lacked `path` or `content`. | Retry. |
 | `(file entry N path/content not strings)` | Wrong types. | Retry. |
+
+Responses larger than 16 MiB, manifests with more than 512 files, individual generated
+files larger than 2 MiB, total generated content larger than 16 MiB, and paths longer
+than 4096 bytes are rejected with explicit safety-limit errors.
 
 PackWrite strips code fences and can extract one obvious top-level JSON object from
 surrounding prose. If parsing still fails, the error now includes sanitized diagnostics:
@@ -84,7 +94,12 @@ nothing. This is a safety guard; retrying usually yields a clean manifest.
 
 **`Unsafe output dir …`**
 The configured `[output].dir` / `--output` value is absolute, empty, traversing, or
-ambiguous. Use a relative project path such as `agent` or `build/agent`.
+ambiguous, contains unsupported control/separator characters, or crosses an existing
+symlink component. Use a relative project path such as `agent` or `build/agent`.
+
+**`error: refusing to overwrite or follow a symlink for raw response file: …`**
+Choose a new path for `--save-raw-response`. Raw-response capture deliberately never
+overwrites an existing file and creates successful saves with mode `0600`.
 
 **`Manifest validation failed: secret-looking path is not allowed: …`**
 The model tried to generate a file path that looks like a secret (`.env`, key material,
@@ -133,6 +148,11 @@ lacking score/repair cues; potential placeholder text.
 **`Could not parse TOML config at <path>` / `Config at <path> did not parse to a table`**
 Your `packwrite.toml` (or global config) is malformed. Validate the TOML syntax. Use
 `packwrite config` to see which sources were loaded.
+
+**`Invalid configuration: …`**
+The TOML parsed, but a known key has the wrong type or range. Booleans must be TOML
+booleans, include/exclude values must be string arrays, numeric model fields must be in
+range, and phase bounds must be positive integers with `min_phases <= max_phases`.
 
 **`Invalid --temperature value '<x>': expected a number …` / `… must be between 0.0 and 2.0.`**
 `--temperature` must be a number in `0.0`–`2.0` (e.g. `0.1`).

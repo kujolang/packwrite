@@ -1,17 +1,14 @@
 # PackWrite — Next Steps
 
-Review date: June 20, 2026
+Review date: August 30, 2026
 
-The single, current, prioritized backlog for PackWrite. It consolidates the still-open
-candidates from the prior readiness pass (`docs/NEXT_SESSION_REVIEW.md`, June 19) with
-the follow-ups identified in the June 20 robustness/security pass, deduplicated and
-reordered by value-to-effort. Treat this file as the source of truth; the earlier review
-is kept only as a dated record.
+The single, current, prioritized backlog for PackWrite, refreshed after the repository
+hardening pass. Treat this file as the source of truth.
 
-Every item below is additive and carries no regression risk to current behavior. Each
-names the module(s) it touches so it can be picked up cold.
+Each remaining item names the module(s) it touches so it can be picked up cold. Any
+future implementation still requires normal compatibility and regression review.
 
-## Completed in the June 20 pass
+## Completed hardening
 
 - Validated numeric CLI flags up front (`--temperature` 0.0–2.0, `--timeout` positive):
   malformed input now returns a clear error instead of crashing the runtime.
@@ -21,6 +18,13 @@ names the module(s) it touches so it can be picked up cold.
 - Added `packwrite doctor --strict` so CI can gate on resolvable endpoint, API key, and
   mega prompt presence; plain `doctor` stays informational (exit 0).
 - Updated README/AGENTS/CHANGELOG and the configuration/troubleshooting docs to match.
+- Fixed staged promotion and rollback for nested output directories.
+- Added strict post-layer config type/range validation and endpoint sanity checks.
+- Added model-response/file/path resource limits and bounded invalid-response diagnostics.
+- Rejected output symlink ancestors and control-bearing model/context paths.
+- Made raw-response saves atomic, owner-only, symlink-safe, and no-overwrite.
+- Added shell-syntax, nested-output, symlink, resource, config, endpoint, context, and
+  raw-response regression coverage.
 
 ## High value
 
@@ -60,11 +64,6 @@ names the module(s) it touches so it can be picked up cold.
    for a corrected manifest, then reuse `pack_apply` + validation with the same path and
    secret guardrails.
 
-8. **Endpoint/URL sanity check in `doctor` (`src/ai.kujo`, `src/cli.kujo`).**
-   When an endpoint is set, validate it is a plausible `http(s)://…` chat-completions URL
-   and warn on common mistakes (missing scheme, `/v1` without `/chat/completions`,
-   Anthropic `/v1/messages`). Today a malformed endpoint only fails at request time.
-
 9. **Configurable secret/redaction patterns (`src/repo_context.kujo`, `src/pack.kujo`).**
    Allow `[repo_context].secret_names` / `secret_exts` (additive to the built-ins) so
    teams with house conventions (`*.token`, `vault/`) get the same guarantees.
@@ -77,10 +76,6 @@ names the module(s) it touches so it can be picked up cold.
 
 11. **`--quiet` flag (`src/cli.kujo`).** Suppress `[n/8]` progress lines and the summary,
     printing only errors — friendlier for scripting alongside `--json`.
-
-12. **Raw-response write safety (`src/cli.kujo`).** Make `--save-raw-response` refuse to
-    overwrite an existing file unless a future `--force` is present, aligning debug
-    output with PackWrite's conservative write posture.
 
 13. **Validation severity config (`src/validate.kujo`).** Let `[pack]` promote selected
     warnings to errors (e.g. `strict_review_checklist`) for a harder CI quality bar.
@@ -98,10 +93,6 @@ names the module(s) it touches so it can be picked up cold.
     troubleshooting command in a temp dir before the next release tag; add a release
     checklist (interpreter assumptions, PATH, shell completion, post-install smoke test).
 
-17. **Reconcile the README note on per-subcommand `--help`.** Every subcommand already
-    honors `--help` (integration-tested); the "command-specific `--help` aliases are not
-    currently implemented" sentence in the Commands section is now misleading.
-
 ## Suggested next-session order
 
 1. Implement `packwrite summary` (item 1).
@@ -112,7 +103,7 @@ names the module(s) it touches so it can be picked up cold.
 ## Notes for whoever picks this up
 
 - Run `make test KUJO=kujo` before and after — keep the
-  suite green (currently 144 unit + 47 CLI integration, fully offline).
+  suite green (currently 168 unit + 58 CLI integration assertions, fully offline).
 - Preserve exact CLI help text: `tests/cli_integration.sh` treats it as a contract.
 - Honor the Kujo runtime gotchas in `AGENTS.md`/`CONTRIBUTING.md` (one `for` per scope,
   `write_text` delete-then-write, uniquely-named helper locals, char-safe string

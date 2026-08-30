@@ -20,15 +20,23 @@ PackWrite is designed to minimize what leaves your machine.
   `id_ed25519`, `.git`, `node_modules`, `vendor`, `dist`, `build`, `.next`,
   `coverage`, `target`, `.venv` and similar are excluded from context. Any
   secret-looking path is skipped and surfaced as a warning.
-- **Prompt payloads are not logged** unless you explicitly pass `--verbose`.
+- **Prompt payloads are not logged.** `--verbose` reports only prompt size; saving a
+  raw model response requires the explicit `--save-raw-response` option.
 - **Writes are sandboxed to the output directory.** Manifest paths from the model are
   validated before dry-runs or writes claim success: absolute paths, `..` traversal,
-  ambiguous path segments, generated secret-looking paths, and paths escaping the
-  configured output dir (`agent/` by default) are rejected. The configured output
-  directory itself must be a non-empty relative project path.
-- **No destructive actions.** PackWrite never installs dependencies, never runs
-  arbitrary commands, and (on `--overwrite`) only prunes files inside its own output
-  directory.
+  ambiguous path segments, control characters, generated secret-looking paths, and
+  paths escaping the configured output dir (`agent/` by default) are rejected. The
+  configured output directory must be a non-empty relative project path whose existing
+  components are not symlinks.
+- **Model output is bounded.** Responses are capped at 16 MiB, manifests at 512 files,
+  individual files at 2 MiB, total generated content at 16 MiB, and paths at 4096
+  bytes. These ceilings limit memory, CPU, and filesystem amplification by an
+  untrusted endpoint.
+- **Raw-response saves are conservative.** They are atomic, refuse existing files and
+  symlinks, and use owner-only (`0600`) permissions.
+- **No arbitrary execution.** PackWrite never installs dependencies or executes
+  model-generated commands. Its internal filesystem promotion only moves/removes
+  paths derived from the validated output directory.
 
 ## Your responsibilities
 
@@ -42,7 +50,7 @@ PackWrite is designed to minimize what leaves your machine.
 
 | Version | Supported |
 | ------- | --------- |
-| 0.1.x   | ✅        |
+| 1.0.x   | ✅        |
 
 ## Reporting a vulnerability
 

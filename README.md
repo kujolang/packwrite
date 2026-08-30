@@ -73,7 +73,7 @@ Current hardening includes:
 - Model manifest paths are validated before dry-runs or writes claim success.
 - Secret-looking generated paths are rejected, not merely warned about after writing.
 - Writes are staged and validated before promotion, with rollback on failed promotion.
-- The full test suite is offline: 144 unit assertions and 47 CLI integration assertions.
+- The full test suite is offline: 168 unit assertions and 58 CLI integration assertions.
 
 ## Install
 
@@ -149,7 +149,8 @@ New here? Follow the full walkthrough in **[docs/HOWTO.md](docs/HOWTO.md)**.
 | `packwrite doctor` | Check config, provider, endpoint, API key, and prompt/output state (add `--strict` to exit non-zero on a blocker, for CI) |
 | `packwrite help` / `version` | Help / version |
 
-PackWrite supports top-level help and version commands, including `--help` and `--version`. Subcommands are documented through the main help output and command sections; command-specific `--help` aliases are not currently implemented.
+PackWrite supports top-level help/version aliases and command-specific `--help` for
+`init`, `validate`, `prompt`, `config`, and `doctor`.
 
 ### `init` options
 
@@ -158,7 +159,7 @@ PackWrite supports top-level help and version commands, including `--help` and `
 --model <name>        model identifier
 --endpoint <url>      OpenAI-compatible chat-completions URL (overrides the preset)
 --temperature <n>     sampling temperature (0.0–2.0)
---timeout <seconds>   request timeout (positive integer)
+--timeout <seconds>   request timeout (positive number)
 --output <dir>        output pack directory (default: agent)
 --overwrite           replace an existing pack directory (clean replace: stale files pruned)
 --dry-run             parse + plan but write nothing
@@ -298,10 +299,12 @@ PackWrite is conservative about what leaves your machine:
   `id_ed25519`, `.git`, `node_modules`, `vendor`, `dist`, `build`, `.next`, `coverage`,
   `target`, `.venv`, and names containing `secret`/`token`); skipped paths are reported.
 - **Writes are sandboxed** to the output directory (absolute, `..` traversal,
-  backslash-separator, `~` home-expansion, ambiguous-segment, and escaping paths are
-  all rejected), configured output directories must be relative project paths,
-  generated secret-looking paths are rejected, nothing destructive runs, and prompt
-  payloads aren't logged without `--verbose`.
+  backslash-separator, `~` home-expansion, control-character, ambiguous-segment, and
+  escaping paths are rejected), configured output directories must be relative project
+  paths with no existing symlink components, and generated secret-looking paths are
+  rejected. Model responses and generated content have explicit resource ceilings.
+- **Prompt payloads are never logged.** `--verbose` reports size only. Explicit raw
+  response saves are owner-only, atomic, and refuse to overwrite an existing path.
 - **Malformed CLI input fails cleanly** — bad or out-of-range `--temperature` /
   `--timeout` values return an actionable error instead of crashing the runtime.
 
@@ -335,7 +338,6 @@ categories stay greppable: `warning (...)`, `! ` (validation warnings), `note:`,
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module map, data flow, extension points |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Every error message and its fix |
 | [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) | Current prioritized backlog for upcoming work |
-| [docs/NEXT_SESSION_REVIEW.md](docs/NEXT_SESSION_REVIEW.md) | Prior readiness-review record (June 19) |
 | [AGENTS.md](AGENTS.md) | Orientation for coding agents working on PackWrite |
 
 Canonical copyable examples live in this README, [docs/HOWTO.md](docs/HOWTO.md), and
@@ -350,7 +352,7 @@ make check      # lint only
 make help       # list tasks
 ```
 
-The suite (144 unit + 47 CLI integration assertions) is **fully offline** — AI calls go
+The suite (168 unit + 58 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
 is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.

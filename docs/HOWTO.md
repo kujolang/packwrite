@@ -68,7 +68,8 @@ PACKWRITE_DEBUG=1 packwrite init MEGA_PROMPT.md --provider deepseek --model deep
 ```
 
 To inspect the raw model payload intentionally, add `--save-raw-response <file>`.
-Use this carefully because raw responses can contain sensitive data.
+Use this carefully because raw responses can contain sensitive data. PackWrite creates
+the file with owner-only permissions and refuses to overwrite an existing path.
 
 ## 4. Preview without writing (recommended first run)
 
