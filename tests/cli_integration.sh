@@ -27,6 +27,14 @@ export PACKWRITE_FAKE_RESPONSE_FILE="$TMP/fake.json"
 cd "$TMP"
 printf '# Demo\n\nBuild a demo.\n' > MEGA_PROMPT.md
 
+# --- quiet mode suppresses successful init output without hiding failures ---
+quiet_out="$(KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --quiet 2>&1)"
+if [ -z "$quiet_out" ]; then ok; else bad "--quiet emitted successful init output"; fi
+if [ -f "$TMP/agent/MASTER.md" ]; then ok; else bad "--quiet init did not generate the pack"; fi
+rm -rf "$TMP/agent"
+quiet_error="$(KUJO="$KUJO" "$BIN" init DOES-NOT-EXIST.md --quiet 2>&1 || true)"
+if echo "$quiet_error" | grep -q '^error:'; then ok; else bad "--quiet hid an init failure"; fi
+
 # --- dry run writes nothing ---
 dry_out="$(KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --dry-run 2>&1)"
 if echo "$dry_out" | grep -q "\[1/8\]"; then ok; else bad "init did not print progress steps"; fi
@@ -107,6 +115,14 @@ rm -f "$TMP/raw-response.txt"
 # --- validate passes ---
 if KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md >/dev/null && KUJO="$KUJO" "$BIN" validate >/dev/null; then ok; else bad "validate failed on good pack"; fi
 
+# --- JSON validation and summary are single machine-readable objects ---
+validate_json="$(KUJO="$KUJO" "$BIN" validate --json)"
+if [[ "$validate_json" == \{*\} ]] && echo "$validate_json" | grep -q '"ok":true' && echo "$validate_json" | grep -q '"errors":\[\]'; then ok; else bad "validate --json contract failed"; fi
+summary_json="$(KUJO="$KUJO" "$BIN" summary --json)"
+if [[ "$summary_json" == \{*\} ]] && echo "$summary_json" | grep -q '"ok":true' && echo "$summary_json" | grep -q '"phase_count":6' && echo "$summary_json" | grep -q '"next_command":"packwrite prompt deepseek"'; then ok; else bad "summary --json contract failed"; fi
+summary_out="$(KUJO="$KUJO" "$BIN" summary)"
+if echo "$summary_out" | grep -q "PackWrite pack summary"; then ok; else bad "summary human output missing heading"; fi
+
 # --- prompt commands ---
 if KUJO="$KUJO" "$BIN" prompt deepseek | grep -q "autonomous"; then ok; else bad "prompt deepseek missing content"; fi
 if KUJO="$KUJO" "$BIN" prompt codex-review | grep -q "repair checklist"; then ok; else bad "prompt codex-review missing content"; fi
@@ -135,7 +151,7 @@ if [ ! -d "$TMP/agent" ]; then ok; else bad "invalid JSON created a partial agen
 export PACKWRITE_FAKE_RESPONSE_FILE="$TMP/fake.json"
 
 # --- deferred commands report planned-not-implemented (exit 2) ---
-for c in compare repair-pack summary; do
+for c in compare repair-pack; do
   out="$(KUJO="$KUJO" "$BIN" "$c" 2>&1 || true)"
   if echo "$out" | grep -q "planned for a future version"; then ok; else bad "$c missing planned message"; fi
 done
@@ -167,9 +183,16 @@ else
 fi
 strict_out="$(KUJO="$KUJO" "$BIN" doctor --provider anthropic --strict 2>&1 || true)"
 if echo "$strict_out" | grep -q "blocking issue"; then ok; else bad "doctor --strict did not report blocking issues"; fi
+doctor_json="$(KUJO="$KUJO" "$BIN" doctor --provider anthropic --json)"
+if [[ "$doctor_json" == \{*\} ]] && echo "$doctor_json" | grep -q '"ok":false' && echo "$doctor_json" | grep -q '"blockers":\['; then ok; else bad "doctor --json contract failed"; fi
+if KUJO="$KUJO" "$BIN" doctor --provider anthropic --strict --json >/dev/null 2>&1; then
+  bad "doctor --strict --json should preserve strict exit behavior"
+else
+  ok
+fi
 
 # --- every subcommand honors --help (exit 0 + usage, no side effects) ---
-for sub in "init" "validate" "prompt" "config" "doctor"; do
+for sub in "init" "validate" "summary" "prompt" "config" "doctor"; do
   out="$(KUJO="$KUJO" "$BIN" $sub --help 2>&1)"; code=$?
   if [ "$code" -eq 0 ] && echo "$out" | grep -qi "usage"; then ok; else bad "$sub --help did not show usage with exit 0"; fi
 done
@@ -187,6 +210,7 @@ Usage: packwrite <command> [arguments]
 Commands:
   init [file]   Generate an /agent pack from a mega prompt
   validate      Validate an existing /agent pack
+  summary       Summarize an existing /agent pack
   prompt <t>    Print a pack prompt (t = deepseek | codex-review)
   config        Show the resolved configuration
   doctor        Check config, provider, endpoint, and prompt/output state
@@ -215,6 +239,7 @@ Options:
   --dry-run             parse + plan but write nothing
   --config <file>       use a specific packwrite.toml
   --verbose             extra diagnostics (printed to stdout)
+  --quiet               suppress successful progress and summary output
   --debug               sanitized provider/response diagnostics
   --save-raw-response <file>  save raw model response (may contain sensitive data)
 EOF

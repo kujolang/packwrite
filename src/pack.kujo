@@ -403,6 +403,7 @@ export func pack_apply(files, cfg, cwd, dry_run) {
     if truthy(location_ready["ok"]) == false {
         return location_ready
     }
+    cleaned := cleanup_stale_workdirs(out_root)
     stage_root := next_stage_root(out_root)
     if stage_root == "" {
         return err("Could not reserve a staging directory for " + cfg["output_dir"])
@@ -445,7 +446,7 @@ export func pack_apply(files, cfg, cwd, dry_run) {
         return promoted
     }
 
-    return {"ok": true, "written": len(paths), "phases": phases, "paths": paths, "pruned": pruned}
+    return {"ok": true, "written": len(paths), "phases": phases, "paths": paths, "pruned": pruned, "cleaned": cleaned}
 }
 
 # Count files under `out_root` whose absolute path is not a manifest target.
@@ -473,6 +474,46 @@ func relative_output_path(path, out_dir) {
         return substring(path, len(prefix), len(path))
     }
     return path
+}
+
+# Remove only PackWrite-owned sibling work directories that have been untouched
+# for at least 24 hours. Stale stages are always disposable. Backups are removed
+# only when the final output directory exists, preserving the sole recovery copy
+# after a promotion crash. Symlinks and non-directories are never followed.
+func cleanup_stale_workdirs(out_root) {
+    parent := parent_of(out_root)
+    name := base_of(out_root)
+    if path_is_dir(parent) == false {
+        return 0
+    }
+    stage_prefix := "." + name + ".packwrite-stage-"
+    backup_prefix := "." + name + ".packwrite-backup-"
+    names := list_dir(parent)
+    now_seconds := current_timestamp() / 1000
+    mut removed := 0
+    mut cw_i := 0
+    cw_n := len(names)
+    while cw_i < cw_n {
+        nm := names[cw_i]
+        candidate := join_path(parent, nm)
+        is_stage := starts_with(nm, stage_prefix)
+        is_backup := starts_with(nm, backup_prefix)
+        can_remove := is_stage || (is_backup && path_is_dir(out_root))
+        if can_remove && path_is_dir(candidate) && path_is_symlink(candidate) == false {
+            metadata := io_file_metadata(candidate)
+            if type(metadata) == "dict" && has_key(metadata, "modified") == 1 {
+                age := now_seconds - metadata["modified"]
+                if age >= 86400 {
+                    remove_tree(candidate)
+                    if path_exists(candidate) == false {
+                        removed = removed + 1
+                    }
+                }
+            }
+        }
+        cw_i = cw_i + 1
+    }
+    return removed
 }
 
 func next_stage_root(out_root) {

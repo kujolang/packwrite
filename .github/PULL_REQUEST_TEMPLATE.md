@@ -19,7 +19,7 @@
 - [ ] No real-provider/network calls added to the default test suite
 - [ ] Updated docs if behavior or config changed (`README.md`, `docs/`, `packwrite.example.toml`)
 - [ ] Added a `CHANGELOG.md` entry under "Unreleased"
-- [ ] Did not implement deferred commands (`compare`, `repair-pack`, `summary`) unless that is the explicit purpose of this PR
+- [ ] Did not implement deferred commands (`compare`, `repair-pack`) unless that is the explicit purpose of this PR
 - [ ] Followed the Kujo runtime conventions in `CONTRIBUTING.md`
 
 ## Notes for reviewers

@@ -23,6 +23,62 @@ export func required_files(cfg) {
     return req
 }
 
+# Return required files that are absent from an existing pack. Paths are reported
+# relative to the configured output directory so human and JSON output stay stable
+# across machines.
+export func missing_required_files(out_root, cfg) {
+    req := required_files(cfg)
+    mut missing := []
+    mut mr_i := 0
+    mr_n := len(req)
+    while mr_i < mr_n {
+        if file_exists(join_path(out_root, req[mr_i])) == false {
+            missing = push(missing, cfg["output_dir"] + "/" + req[mr_i])
+        }
+        mr_i = mr_i + 1
+    }
+    if path_is_dir(join_path(out_root, "phases")) == false {
+        missing = push(missing, cfg["output_dir"] + "/phases")
+    }
+    return missing
+}
+
+export func phase_file_count(out_root) {
+    phases_dir := join_path(out_root, "phases")
+    if path_is_dir(phases_dir) == false {
+        return 0
+    }
+    names := list_dir(phases_dir)
+    mut count := 0
+    mut pc_i := 0
+    pc_n := len(names)
+    while pc_i < pc_n {
+        if ends_with(names[pc_i], ".md") {
+            count = count + 1
+        }
+        pc_i = pc_i + 1
+    }
+    return count
+}
+
+# Read-only status envelope used by `packwrite summary` and downstream agents.
+export func summary_run(out_root, cfg) {
+    validation := validate_run(out_root, cfg)
+    mut next_command := "packwrite validate"
+    if truthy(validation["ok"]) {
+        next_command = "packwrite prompt deepseek"
+    }
+    return {
+        "ok": validation["ok"],
+        "output_dir": cfg["output_dir"],
+        "phase_count": phase_file_count(out_root),
+        "missing_files": missing_required_files(out_root, cfg),
+        "errors": validation["errors"],
+        "warnings": validation["warnings"],
+        "next_command": next_command
+    }
+}
+
 # Autonomy cues that a DEEPSEEK_START.md should contain (matched case-insensitively).
 func has_autonomy_cue(text) {
     low := to_lower(text)

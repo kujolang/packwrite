@@ -29,7 +29,7 @@ the model only fills in *content*.
 | `src/repo_context.kujo` | Lightweight, redacted repo summary (include/exclude, secret skip). | `context_collect`, `context_render` |
 | `src/ai.kujo` | The model boundary: adapter over `ai_chat`, endpoint/key resolution, distillation-prompt builder. | `ai_generate`, `ai_distillation_prompt`, `resolve_endpoint` |
 | `src/pack.kujo` | Manifest/resource limits, config/path/symlink safety, overwrite/prune, staged write/dry-run. | `pack_parse`, `pack_apply`, `pack_guard_overwrite`, `pack_validate_config`, `safe_target` |
-| `src/validate.kujo` | Deterministic pack validation (no AI). | `validate_run`, `required_files` |
+| `src/validate.kujo` | Deterministic pack validation and read-only summaries (no AI). | `validate_run`, `summary_run`, `required_files` |
 | `src/util.kujo` | Predicates, char-safe string helpers, safe fs read/write. | `truthy`, `str_find`, `write_text`, … |
 | `src/errors.kujo` | Result envelopes and canonical user-facing messages. | `ok`, `err`, `is_ok`, `msg_*` |
 
@@ -70,7 +70,7 @@ validate_run ───────────────► { ok, errors[], wa
 cli.print_summary ──────────► summary + next command, exit code
 ```
 
-`validate` and `prompt` reuse the same config and pack layers without the AI call.
+`validate`, `summary`, and `prompt` reuse the same config and pack layers without the AI call.
 
 ## The AI adapter boundary
 
@@ -109,7 +109,6 @@ The module seams are designed so the deferred features slot in without restructu
   add a scoring module that consumes `validate_run` results.
 - **`repair-pack`** — feed a `validate_run` failure report plus the pack back through
   `ai_generate` with a repair-oriented prompt, then re-`pack_apply` + `validate_run`.
-- **`summary`** — a read-only pass over an existing pack using `validate.kujo` helpers.
 - **New providers** — extend `endpoint_presets()` in `ai.kujo`; everything else is
   unchanged because callers only see `ai_generate`.
 

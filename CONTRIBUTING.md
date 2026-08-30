@@ -191,8 +191,8 @@ A good PR includes:
 Keep generated artifacts out of commits unless the artifact is the reviewed
 output of the change.
 
-Do not implement deferred commands such as `compare`, `repair-pack`, or
-`summary` unless that is the explicit purpose of the PR.
+Do not implement deferred commands such as `compare` or `repair-pack` unless that is
+the explicit purpose of the PR.
 
 ## License
 

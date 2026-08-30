@@ -135,7 +135,11 @@ lacking score/repair cues; potential placeholder text.
 ## Commands
 
 **`error: '<cmd>' is planned for a future version and is not implemented yet.`** (exit 2)
-`compare`, `repair-pack`, and `summary` are recognized but not implemented yet.
+`compare` and `repair-pack` are recognized but not implemented yet.
+
+Use `packwrite summary` for a read-only status report. `packwrite summary --json`,
+`packwrite validate --json`, and `packwrite doctor --json` emit one JSON object for
+automation; `doctor --strict --json` preserves strict non-zero exit behavior.
 
 **`error: unknown command '<cmd>'`** (exit 2) — typo or unsupported command. Run
 `packwrite help`.

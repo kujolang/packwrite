@@ -18,7 +18,7 @@ from src.prompt import prompt_resolve, prompt_read, absolutize
 from src.repo_context import context_collect, is_excluded, looks_secret, included
 from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, ai_build_options, validate_endpoint
 from src.pack import pack_parse, pack_parse_with_meta, pack_validate_manifest, pack_apply, safe_target, pack_guard_overwrite, pack_validate_config, pack_validate_output_location, pack_limits, extract_json
-from src.validate import validate_run, extract_phase_refs, required_files
+from src.validate import validate_run, extract_phase_refs, required_files, summary_run, phase_file_count, missing_required_files
 
 mut passed := 0
 mut failed := 0
@@ -639,6 +639,13 @@ func test_overwrite_prunes() {
     write_file(join_path(ow, "agent/phases/99-orphan.md"), "stale\n")
     write_file(join_path(ow, "agent/STALE_ROOT.md"), "stale\n")
     check(file_exists(join_path(ow, "agent/phases/99-orphan.md")), "orphan planted")
+    stale_stage := join_path(ow, ".agent.packwrite-stage-old")
+    stale_backup := join_path(ow, ".agent.packwrite-backup-old")
+    create_dir(stale_stage)
+    create_dir(stale_backup)
+    write_file(join_path(stale_stage, "partial.md"), "stale\n")
+    write_file(join_path(stale_backup, "old.md"), "stale\n")
+    sh("touch -t 202001010000 " + stale_stage + " " + stale_backup)
 
     a2 := pack_apply(parsed["files"], cfg, ow, false)
     check(is_ok(a2), "second pack_apply ok")
@@ -646,6 +653,8 @@ func test_overwrite_prunes() {
     check(file_exists(join_path(ow, "agent/phases/99-orphan.md")) == false, "orphan phase removed")
     check(file_exists(join_path(ow, "agent/STALE_ROOT.md")) == false, "orphan root file removed")
     check(file_exists(join_path(ow, "agent/MASTER.md")), "legit file still present after prune")
+    check(a2["cleaned"] == 2, "stale stage and redundant backup work dirs cleaned")
+    check(path_exists(stale_stage) == false && path_exists(stale_backup) == false, "stale work dirs removed")
 
     # Dry run never prunes or writes.
     write_file(join_path(ow, "agent/STALE_AGAIN.md"), "stale\n")
@@ -689,6 +698,50 @@ func test_validation_content_cues() {
     check(truthy(voff["ok"]), "pack without disabled optional files still validates")
 }
 
+func test_summary_envelope() {
+    sr := join_path(WORK, "summarytest")
+    create_dir(sr)
+    cfg := config_defaults()
+    parsed := pack_parse(make_manifest())
+    pack_apply(parsed["files"], cfg, sr, false)
+    out_root := join_path(sr, "agent")
+
+    check(phase_file_count(out_root) == 6, "summary phase count")
+    check(len(missing_required_files(out_root, cfg)) == 0, "summary has no missing files for valid pack")
+    good := summary_run(out_root, cfg)
+    check(truthy(good["ok"]), "summary valid envelope is ok")
+    check(good["phase_count"] == 6, "summary envelope reports phases")
+    check(good["next_command"] == "packwrite prompt deepseek", "summary suggests implementation prompt")
+
+    delete_file(join_path(out_root, "MASTER.md"))
+    broken := summary_run(out_root, cfg)
+    check(truthy(broken["ok"]) == false, "summary invalid envelope fails")
+    check(len(broken["missing_files"]) == 1, "summary reports missing required file")
+    check(broken["next_command"] == "packwrite validate", "summary suggests validation for broken pack")
+}
+
+func test_golden_pack_fixture() {
+    cfg := config_defaults()
+    golden := join_path(os_getcwd(), "tests/fixtures/golden-agent")
+    result := validate_run(golden, cfg)
+    check(truthy(result["ok"]), "committed golden agent pack validates")
+    check(phase_file_count(golden) == 6, "golden agent pack phase count")
+}
+
+func test_recovery_backup_retained() {
+    rb := join_path(WORK, "recoverytest")
+    create_dir(rb)
+    backup := join_path(rb, ".agent.packwrite-backup-old")
+    create_dir(backup)
+    write_file(join_path(backup, "MASTER.md"), "recovery\n")
+    sh("touch -t 202001010000 " + backup)
+    cfg := config_defaults()
+    parsed := pack_parse(make_manifest())
+    applied := pack_apply(parsed["files"], cfg, rb, false)
+    check(is_ok(applied), "pack applies while recovery backup exists")
+    check(path_is_dir(backup), "sole recovery backup retained when output was absent")
+}
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -713,6 +766,9 @@ test_global_layering()
 test_config_takes_effect()
 test_overwrite_prunes()
 test_validation_content_cues()
+test_summary_envelope()
+test_golden_pack_fixture()
+test_recovery_backup_retained()
 teardown()
 
 print("")

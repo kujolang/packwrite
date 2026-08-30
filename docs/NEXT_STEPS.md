@@ -25,33 +25,26 @@ future implementation still requires normal compatibility and regression review.
 - Made raw-response saves atomic, owner-only, symlink-safe, and no-overwrite.
 - Added shell-syntax, nested-output, symlink, resource, config, endpoint, context, and
   raw-response regression coverage.
+- Wired hosted CI to the pinned Kujo v1.1.0 Linux x64 release artifact, with SHA-256
+  verification before extraction or execution.
+- Added read-only `summary`, machine-readable `validate --json` / `summary --json` /
+  `doctor --json`, quiet successful init output, and a committed golden pack fixture.
+- Added age-gated cleanup for stale PackWrite stage directories and redundant backups;
+  recovery backups are retained whenever the final output directory is absent.
+- Added a provider/gateway compatibility matrix with explicit certification limits.
 
 ## High value
 
-1. **Read-only `summary` command (`src/cli.kujo`, `src/validate.kujo`).**
-   Implement the deferred `packwrite summary` using existing validation helpers: print
-   pack status, phase count, missing files, warnings, and the next suggested command
-   without calling AI. Highest-leverage next feature.
-
-2. **Machine-readable output: `validate --json` and `doctor --json` (`src/cli.kujo`).**
-   Emit the validation envelope (`ok`, `errors`, `warnings`) and doctor blockers as a
-   single JSON object for CI and downstream agents. Keep the human format as default;
-   `--json` switches. Pairs naturally with `doctor --strict`.
-
 3. **Network resilience for `ai_generate` (`src/ai.kujo`).**
-   The model call is single-shot. Add a bounded retry (e.g. 2 retries, linear backoff)
-   for transient transport failures, gated so the fake-injection seam and offline suite
-   are untouched. Distinguish retryable (timeout/5xx/connection) from non-retryable
-   (auth/4xx); surface attempt count under `--verbose`.
+   The model call remains single-shot. Add bounded retries only after Kujo's AI adapter
+   exposes a stable, sanitized status classification that distinguishes transient
+   timeout/connection/5xx failures from non-retryable authentication and other 4xx
+   failures. Blind retries can duplicate expensive requests.
 
 4. **Policy file support (`src/config.kujo`, `src/pack.kujo`).**
    Add an optional `[policy]` section for org defaults: allowed output dirs, allowed
    providers, required minimum phase count, and whether raw-response saves are disabled.
    Makes PackWrite easy to standardize across teams.
-
-5. **Golden `/agent` fixture (`tests/fixtures/`).**
-   Commit a small golden pack and validate it directly, so the expected pack shape is
-   inspectable rather than only generated at test time.
 
 ## Medium value
 
@@ -68,21 +61,10 @@ future implementation still requires normal compatibility and regression review.
    Allow `[repo_context].secret_names` / `secret_exts` (additive to the built-ins) so
    teams with house conventions (`*.token`, `vault/`) get the same guarantees.
 
-10. **Provider compatibility matrix (docs).**
-    A table of tested endpoint shapes for DeepSeek, OpenAI, local OpenAI-compatible
-    servers, OpenRouter, and LiteLLM, with exact notes for providers that need a gateway.
-
 ## Lower value / polish
-
-11. **`--quiet` flag (`src/cli.kujo`).** Suppress `[n/8]` progress lines and the summary,
-    printing only errors — friendlier for scripting alongside `--json`.
 
 13. **Validation severity config (`src/validate.kujo`).** Let `[pack]` promote selected
     warnings to errors (e.g. `strict_review_checklist`) for a harder CI quality bar.
-
-14. **Stage-dir cleanup safety net (`src/pack.kujo`).** Sweep orphaned
-    `.<out>.packwrite-stage-*` / `-backup-*` dirs left by a crashed run, with a
-    `--verbose` note.
 
 15. **Performance: memoize repeated reads in `validate_run` (`src/validate.kujo`).**
     Phase files and structured docs are read more than once across the section, phase,
@@ -95,15 +77,15 @@ future implementation still requires normal compatibility and regression review.
 
 ## Suggested next-session order
 
-1. Implement `packwrite summary` (item 1).
-2. Add `validate --json` / `doctor --json` (item 2).
-3. Create the golden pack fixture (item 5).
-4. Update docs and integration tests around those new read-only surfaces.
+1. Add organization policy-file support (item 4).
+2. Add configurable secret/redaction patterns (item 9).
+3. Add validation severity controls (item 13).
+4. Revisit retries only after the Kujo adapter exposes safe error classification.
 
 ## Notes for whoever picks this up
 
 - Run `make test KUJO=kujo` before and after — keep the
-  suite green (currently 168 unit + 58 CLI integration assertions, fully offline).
+  suite green (currently 182 unit + 66 CLI integration assertions, fully offline).
 - Preserve exact CLI help text: `tests/cli_integration.sh` treats it as a contract.
 - Honor the Kujo runtime gotchas in `AGENTS.md`/`CONTRIBUTING.md` (one `for` per scope,
   `write_text` delete-then-write, uniquely-named helper locals, char-safe string

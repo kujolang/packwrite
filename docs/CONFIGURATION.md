@@ -89,6 +89,8 @@ never sends file contents beyond a single README summary line. See [SECURITY](..
 | --- | --- | --- |
 | `--dry-run` | active | Run the full pipeline but write nothing; print the planned files. |
 | `--verbose` | active | Print extra diagnostics such as prompt size (to stdout — the runtime has no stderr); prompt content is never printed. |
+| `--quiet` | active | Suppress successful `init` progress, generated-file listings, and the final summary. Errors remain visible. |
+| `--json` | active for `validate`, `summary`, and `doctor` | Emit one machine-readable JSON object instead of human-formatted output. |
 | `--debug` | active | Print sanitized provider/model/finish-reason/length diagnostics during `init`. |
 | `--save-raw-response <file>` | active | Atomically save raw model response with owner-only permissions (warning: may contain sensitive data). Existing files and symlinks are refused. |
 | `--config <file>` | active | Use a specific `packwrite.toml` instead of the one in the cwd. |

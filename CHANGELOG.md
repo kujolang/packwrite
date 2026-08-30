@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CI
+
+- Replaced the hosted-CI runtime placeholder with the pinned Kujo v1.1.0 Linux x64
+  release artifact and SHA-256 verification before extraction or execution.
+
+### Added
+
+- Added the read-only `summary` command, machine-readable `--json` output for
+  `summary`, `validate`, and `doctor`, a quiet `init` mode, and a committed golden pack
+  fixture validated by the offline suite.
+
 ### Fixed
 
 - Nested output directories such as `build/agent` now stage, promote, roll back, and

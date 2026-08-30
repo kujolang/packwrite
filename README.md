@@ -73,7 +73,7 @@ Current hardening includes:
 - Model manifest paths are validated before dry-runs or writes claim success.
 - Secret-looking generated paths are rejected, not merely warned about after writing.
 - Writes are staged and validated before promotion, with rollback on failed promotion.
-- The full test suite is offline: 168 unit assertions and 58 CLI integration assertions.
+- The full test suite is offline: 182 unit assertions and 66 CLI integration assertions.
 
 ## Install
 
@@ -142,15 +142,16 @@ New here? Follow the full walkthrough in **[docs/HOWTO.md](docs/HOWTO.md)**.
 | Command | What it does |
 | --- | --- |
 | `packwrite init [file]` | Generate an `/agent` pack from a mega prompt |
-| `packwrite validate` | Deterministically validate an existing `/agent` pack |
+| `packwrite validate` | Deterministically validate an existing `/agent` pack (`--json` for CI) |
+| `packwrite summary` | Report pack status, phase count, missing files, warnings, and next command (`--json` supported) |
 | `packwrite prompt deepseek` | Print the implementation-agent prompt |
 | `packwrite prompt codex-review` | Print the reviewer prompt |
 | `packwrite config` | Show the fully resolved configuration and its sources |
-| `packwrite doctor` | Check config, provider, endpoint, API key, and prompt/output state (add `--strict` to exit non-zero on a blocker, for CI) |
+| `packwrite doctor` | Check config, provider, endpoint, API key, and prompt/output state (`--strict` gates CI; `--json` is machine-readable) |
 | `packwrite help` / `version` | Help / version |
 
 PackWrite supports top-level help/version aliases and command-specific `--help` for
-`init`, `validate`, `prompt`, `config`, and `doctor`.
+`init`, `validate`, `summary`, `prompt`, `config`, and `doctor`.
 
 ### `init` options
 
@@ -165,6 +166,7 @@ PackWrite supports top-level help/version aliases and command-specific `--help` 
 --dry-run             parse + plan but write nothing
 --config <file>       use a specific packwrite.toml
 --verbose             extra diagnostics
+--quiet               suppress successful progress and summary output
 --debug               print sanitized provider/model/finish_reason diagnostics
 --save-raw-response <file>  save raw model response (may contain sensitive data)
 ```
@@ -338,6 +340,7 @@ categories stay greppable: `warning (...)`, `! ` (validation warnings), `note:`,
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module map, data flow, extension points |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Every error message and its fix |
 | [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) | Current prioritized backlog for upcoming work |
+| [docs/PROVIDERS.md](docs/PROVIDERS.md) | Provider and gateway compatibility matrix |
 | [AGENTS.md](AGENTS.md) | Orientation for coding agents working on PackWrite |
 
 Canonical copyable examples live in this README, [docs/HOWTO.md](docs/HOWTO.md), and
@@ -352,7 +355,7 @@ make check      # lint only
 make help       # list tasks
 ```
 
-The suite (168 unit + 58 CLI integration assertions) is **fully offline** — AI calls go
+The suite (182 unit + 66 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
 is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.
@@ -365,11 +368,11 @@ drives developer tasks, `kujo.toml` identifies the Kujo package, and
 
 ## Project status
 
-**Implemented in v1:** `init`, `validate`, `prompt`, `config`, `doctor`, `help`,
+**Implemented in v1:** `init`, `validate`, `summary`, `prompt`, `config`, `doctor`, `help`,
 `version`.
 
 **Planned / not implemented** (running them prints a "planned for a future version"
-message and exits non-zero): `compare`, `repair-pack`, `summary`. Also deferred: a
+message and exits non-zero): `compare`, `repair-pack`. Also deferred: a
 Markdown-delimiter fallback parser (v1 is JSON-manifest only) and streaming output. The
 code is modular so these slot in without restructuring — see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#extension-points).

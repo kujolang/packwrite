@@ -47,7 +47,7 @@ offline fake-response seam. No live provider or credentials were used.
 | PW-H09 | P2 | Failure semantics | Staged write return values were ignored. | `write_file_atomic(...)` result was discarded. | Abort, clean the stage, and identify the failed relative file. | Fixed |
 | PW-H10 | P2 | Documentation | Security support version, test counts, help support, verbose behavior, and backlog state had drifted. | Docs claimed 0.1.x support, old assertion totals, payload logging under verbose, and missing subcommand help. | Reconcile canonical docs, security policy, changelog, and backlog. | Fixed |
 | PW-H11 | P2 | CI ratchet | Bash scripts had no syntax gate in the default test target. | `make test` checked Kujo and runtime tests only. | Add `make scripts` and make it a prerequisite of `make test`. | Fixed |
-| PW-H12 | P1 | CI/supply chain | Hosted CI intentionally fails until a Kujo binary source is configured. | `.github/workflows/ci.yml` contains only placeholder setup options followed by fail-fast detection. | Obtain a trusted Kujo release artifact or accessible source checkout, pin it, and then wire CI. | Open cross-repository dependency |
+| PW-H12 | P1 | CI/supply chain | Hosted CI intentionally failed until a Kujo binary source was configured. | The original workflow contained only placeholder setup options followed by fail-fast detection. Kujo v1.1.0 subsequently published a Linux x64 artifact and checksum. | Download the versioned release artifact, verify its pinned SHA-256 digest, and install it only after verification. | Fixed in follow-up |
 
 ## Changes Implemented
 
@@ -157,30 +157,32 @@ to the same repository remains outside the CLI's complete control.
 
 ## Cross-Repository Follow-Ups
 
-### `kujolang/kujo`: trusted CI distribution contract
+### `kujolang/kujo`: trusted CI distribution contract (resolved)
 
-- Dependency/contract: PackWrite CI requires a Kujo interpreter but no public,
-  checksummed installation source is configured.
-- Evidence: `.github/workflows/ci.yml` documents two placeholders and deliberately
-  fails when `kujo` is absent.
-- Impact: the primary lint/test workflow cannot become green on a stock hosted runner.
-- Recommended change: publish a versioned Kujo artifact with checksum/provenance or
-  expose a stable source checkout/build contract; then pin the artifact/SHA in PackWrite.
-- Current repository requirement: yes, CI wiring depends on that source; local tests do
-  not.
-- Compatibility: pin the Kujo version and preserve a documented update procedure so
-  runtime changes do not silently alter PackWrite behavior.
+- Dependency/contract: PackWrite CI requires a Kujo interpreter from a trustworthy,
+  reproducible source.
+- Resolution: Kujo v1.1.0 now publishes a Linux x64 release archive with SHA-256
+  checksums. PackWrite pins both the release version and the verified archive digest in
+  `.github/workflows/ci.yml`.
+- Verification: CI downloads the exact archive, runs `sha256sum --check --strict`,
+  extracts only after verification, confirms `kujo --version`, then runs the offline
+  check and test gates.
+- Update procedure: when upgrading Kujo, review the Kujo release, change both
+  `KUJO_VERSION` and `KUJO_LINUX_X64_SHA256`, and rerun the workflow. Never advance the
+  version without updating the pinned digest from the release's checksum asset.
 
 ## Remaining Work
 
 - **P0:** none known.
-- **P1:** wire hosted CI once the Kujo distribution contract exists.
-- **P2:** add machine-readable `validate --json` / `doctor --json`; add crash-orphan
-  stage cleanup; consider one-pass validation reads if large real packs demonstrate I/O
-  cost.
-- **P3:** optional `--quiet` scripting polish and provider compatibility documentation.
-- **Needs more evidence:** retry policy for live provider failures and stricter endpoint
-  path heuristics; no live credentials/network calls were justified for this audit.
+- **P1:** none known; hosted CI now consumes a pinned, checksummed Kujo release.
+- **P2:** none known. Machine-readable validation/doctor/summary output and age-gated
+  crash-orphan cleanup were completed in the follow-up. One-pass validation reads remain
+  unjustified without evidence of material I/O cost on real packs.
+- **P3:** none known. Quiet scripting output and provider compatibility documentation
+  were completed in the follow-up.
+- **Evidence boundary, not an open defect:** live retries remain single-shot until the
+  Kujo AI adapter exposes safe status classification; stricter endpoint path heuristics
+  remain unjustified without a demonstrated compatibility or safety failure.
 - **Not worth changing now:** caching repository context, adding concurrency, or
   replacing the zero-dependency implementation; current pack sizes and execution model
   do not justify their complexity.
@@ -190,13 +192,14 @@ to the same repository remains outside the CLI's complete control.
 | Command | Result |
 | --- | --- |
 | `make check` | Passed |
-| `make unit` | Passed: 168 assertions |
-| `make integration` | Passed: 58 assertions |
-| `make test` | Passed: Kujo checks, Bash syntax, 168 unit + 58 CLI assertions |
+| `make unit` | Passed initially: 168 assertions; follow-up: 182 assertions |
+| `make integration` | Passed initially: 58 assertions; follow-up: 66 assertions |
+| `make test` | Passed after follow-up: Kujo checks, Bash syntax, 182 unit + 66 CLI assertions |
 | `make smoke` | Passed: version and help |
 | `make scripts` | Passed |
 | `bash -n bin/packwrite tests/run.sh tests/cli_integration.sh .github/scripts/check-kujo-tool-artifacts.sh` | Passed |
 | `.github/scripts/check-kujo-tool-artifacts.sh HEAD^ HEAD` | Passed |
+| Kujo v1.1.0 Linux x64 release archive SHA-256 | Passed; pinned digest matched and binary reported `kujo 1.1.0` in an Ubuntu 22.04 container |
 | `./bin/packwrite --help` | Passed |
 | `./bin/packwrite version` | Passed: `packwrite 1.0.0` |
 | `git diff --check` | Passed |

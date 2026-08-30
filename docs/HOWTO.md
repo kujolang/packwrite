@@ -105,6 +105,17 @@ What happened, in order: config resolved → mega prompt located → overwrite g
 checked → safe repo context collected → distillation prompt built → model called via
 the adapter → JSON manifest parsed → pack written → pack validated → summary printed.
 
+Inspect an existing pack without contacting a provider:
+
+```bash
+packwrite summary
+packwrite validate --json
+packwrite doctor --strict --json
+```
+
+Each `--json` form emits one JSON object. Use `packwrite init --quiet` when successful
+generation should produce no progress or summary output; errors remain visible.
+
 The result:
 
 ```text
