@@ -74,7 +74,7 @@ offline fake-response seam. No live provider or credentials were used.
 - Implementation: validate resolved config after all precedence layers; require the
   documented types/ranges; enforce positive ordered phase bounds; require HTTP(S)
   endpoints without URL userinfo or line controls.
-- Files: `src/config.kujo`, `src/ai.kujo`, `src/cli.kujo`.
+- Files: `src/config.kujo`, `src/ai.kujo`, `src/command.kujo`.
 - Tests: wrong boolean/list/numeric types, inverted bounds, invalid scheme, and embedded
   credentials.
 - Compatibility: valid documented configuration is unchanged. Previously accepted
@@ -99,7 +99,7 @@ offline fake-response seam. No live provider or credentials were used.
   echoed, and repository names/project content were not explicitly bounded as data.
 - Implementation: private atomic raw writes; stable provider failures; context control
   filtering and delimiters; one explicit untrusted-project-data rule.
-- Files: `src/util.kujo`, `src/cli.kujo`, `src/ai.kujo`, `src/repo_context.kujo`.
+- Files: `src/util.kujo`, `src/command.kujo`, `src/ai.kujo`, `src/repo_context.kujo`.
 - Tests: raw file mode/no-overwrite, control filename filtering, and prompt rule.
 - Compatibility: prompt semantics and manifest schema are unchanged. The raw-save
   warning and provider failure wording changed intentionally for safety.

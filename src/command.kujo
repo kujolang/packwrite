@@ -1,4 +1,4 @@
-# PackWrite :: cli
+# PackWrite :: command
 #
 # Argument parsing and command dispatch. This is the only module that prints
 # user-facing output and chooses process exit codes; it wires together config,
@@ -9,7 +9,7 @@
 #   1  operational failure (missing prompt, AI failure, validation failure)
 #   2  usage error (bad/missing arguments)
 
-from src.util import truthy, is_text, write_private_file_atomic, has_line_control
+from src.util import truthy, is_text, write_private_file_atomic, has_line_control, list_includes
 from src.errors import is_ok, err_msg
 from src.config import config_load, config_defaults
 from src.prompt import prompt_resolve, prompt_read
@@ -17,7 +17,6 @@ from src.repo_context import context_collect, context_render
 from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, validate_endpoint
 from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_overwrite, pack_apply, pack_validate_config, pack_validate_output_location
 from src.validate import validate_run, summary_run
-from cli import parse_args
 
 VERSION := "1.0.0"
 
@@ -35,6 +34,37 @@ func first_positional(parsed) {
 
 func bool_flag_list() {
     return ["dry-run", "overwrite", "verbose", "help", "debug", "strict", "json", "quiet"]
+}
+
+# Small local token parser. Keeping this compatibility surface repo-local makes the
+# installed PackWrite launcher self-contained; release binaries do not necessarily
+# ship Kujo's source-only `modules/cli.kujo` package.
+func parse_args(tokens, bool_flags) {
+    if type(tokens) != "array" || type(bool_flags) != "array" {
+        return {"positionals": [], "flags": {}}
+    }
+    mut positionals := []
+    mut flags := {}
+    mut ap_i := 0
+    ap_n := len(tokens)
+    while ap_i < ap_n {
+        token := tokens[ap_i]
+        if starts_with(token, "--") {
+            key := substring(token, 2, len(token))
+            if list_includes(bool_flags, key) {
+                flags[key] = true
+            } else if ap_i + 1 < ap_n && starts_with(tokens[ap_i + 1], "--") == false {
+                flags[key] = tokens[ap_i + 1]
+                ap_i = ap_i + 1
+            } else {
+                flags[key] = ""
+            }
+        } else {
+            positionals = push(positionals, token)
+        }
+        ap_i = ap_i + 1
+    }
+    return {"positionals": positionals, "flags": flags}
 }
 
 # ---------------------------------------------------------------------------

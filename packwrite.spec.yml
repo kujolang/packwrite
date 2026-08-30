@@ -19,7 +19,7 @@ likely_files:
   - "README.md"
   - "packwrite.kujo"
   - "bin/packwrite"
-  - "src/cli.kujo"
+  - "src/command.kujo"
   - "src/config.kujo"
   - "src/pack.kujo"
   - "src/validate.kujo"

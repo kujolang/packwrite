@@ -23,7 +23,7 @@ the model only fills in *content*.
 | Module | Responsibility | Key exports |
 | --- | --- | --- |
 | `packwrite.kujo` | Entrypoint; turns `args()` into a process exit code. | — |
-| `src/cli.kujo` | Arg parsing + command dispatch. **The only module that prints** and chooses exit codes. | `main`, `dispatch` |
+| `src/command.kujo` | Self-contained arg parsing + command dispatch. **The only module that prints** and chooses exit codes. It does not depend on Kujo's source-only `modules/cli.kujo`, which is not bundled into release binaries. | `main`, `dispatch` |
 | `src/config.kujo` | Layered config resolution and TOML loading. | `config_load`, `config_resolve`, `config_defaults` |
 | `src/prompt.kujo` | Mega-prompt discovery and reading. | `prompt_resolve`, `prompt_read` |
 | `src/repo_context.kujo` | Lightweight, redacted repo summary (include/exclude, secret skip). | `context_collect`, `context_render` |
@@ -67,7 +67,7 @@ pack_apply ─────────────────► validate paths
 validate_run ───────────────► { ok, errors[], warnings[] }
   │
   ▼
-cli.print_summary ──────────► summary + next command, exit code
+command.print_summary ──────► summary + next command, exit code
 ```
 
 `validate`, `summary`, and `prompt` reuse the same config and pack layers without the AI call.
@@ -90,10 +90,15 @@ ai_generate(prompt, cfg, opts) -> { "ok": bool, "text": str, ... }
 This single seam is what makes PackWrite both provider-swappable and fully testable
 offline.
 
+The command parser remains local and deliberately small so `bin/packwrite` works with a
+standalone Kujo release binary. Importing the first-party `cli` source module would
+require a separate `KUJO_MODULE_PATH` checkout and would also collide with a command
+module named `cli` under Kujo v1.1's circular-import detection.
+
 ## Result-envelope convention
 
 Library functions never print and never `exit`. They return
-`{"ok": true, ...}` or `{"ok": false, "error": "..."}`. `src/cli.kujo` is the only
+`{"ok": true, ...}` or `{"ok": false, "error": "..."}`. `src/command.kujo` is the only
 layer that interprets envelopes into stdout messages and exit codes:
 
 - `0` success

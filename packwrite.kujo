@@ -8,7 +8,7 @@
 # or via the bin/packwrite wrapper:
 #   ./bin/packwrite <command> [arguments]
 
-from src.cli import main
+from src.command import main
 
 code := main(args())
 exit(code)

@@ -21,7 +21,7 @@ src/
   ai.kujo             ai_chat adapter (swappable, fake-able) + distillation prompt
   pack.kujo           manifest parse, path safety, overwrite guard, clean-replace write/dry-run
   validate.kujo       deterministic pack validation (no AI)
-  cli.kujo            arg parsing + command dispatch (only layer that prints)
+  command.kujo        arg parsing + command dispatch (only layer that prints)
 tests/
   run.sh              unit harness + CLI integration
   packwrite_test.kujo offline unit assertions
@@ -40,8 +40,8 @@ tests/
 - `len`/`index_of` are byte-based but `substring` is char-based — never mix them; use the
   char-safe helpers in `util.kujo` (`str_find`, `str_find_from`, `str_rfind`).
 - `parse_json` / `parse_toml` are guarded (try/except + type checks); never trusted raw.
-- Modules return envelopes; only `cli.kujo` prints and chooses exit codes (0/1/2).
-- In `cli.kujo`, prefer the local output helpers (`print_lines`, `print_list`,
+- Modules return envelopes; only `command.kujo` prints and chooses exit codes (0/1/2).
+- In `command.kujo`, prefer the local output helpers (`print_lines`, `print_list`,
   `print_paths`, `print_kv`, `print_usage`, `print_error`) for repeated output blocks,
   aligned label/value rows, usage lines, and canonical error prefixes. Preserve exact
   CLI text because integration tests treat it as a contract.

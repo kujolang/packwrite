@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the read-only `summary` command, machine-readable `--json` output for
   `summary`, `validate`, and `doctor`, a quiet `init` mode, and a committed golden pack
   fixture validated by the offline suite.
+- Renamed the command module to avoid a Kujo v1.1 module-name collision with the
+  first-party `cli` parser package on Linux.
 
 ### Fixed
 

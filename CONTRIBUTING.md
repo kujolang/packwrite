@@ -48,7 +48,7 @@ src/
   ai.kujo               AI adapter, fake seam, and distillation prompt
   pack.kujo             manifest parse, path safety, overwrite/prune, dry-run
   validate.kujo         deterministic pack validation
-  cli.kujo              arg parsing and command dispatch; only layer that prints
+  command.kujo          arg parsing and command dispatch; only layer that prints
 tests/
   run.sh                unit harness plus CLI integration
   packwrite_test.kujo   offline unit assertions
@@ -98,10 +98,10 @@ Document any important search exclusions in larger cleanup or audit PRs.
 - Keep config honest. A config key should either change observable behavior or
   be clearly documented as reserved.
 - Preserve compatibility entrypoints and wrappers when a repo provides them.
-- Only `src/cli.kujo` prints to the user and chooses exit codes. Library modules
+- Only `src/command.kujo` prints to the user and chooses exit codes. Library modules
   return result envelopes.
 - Use `print_lines`, `print_list`, `print_paths`, `print_kv`, `print_usage`,
-  and `print_error` in `src/cli.kujo` when output repeats.
+  and `print_error` in `src/command.kujo` when output repeats.
 - Exit codes are `0` for success, `1` for operational failure, and `2` for
   usage error.
 - Depend on `ai_generate(...)`, not the raw `ai_chat` builtin directly.

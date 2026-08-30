@@ -90,5 +90,5 @@ future implementation still requires normal compatibility and regression review.
 - Honor the Kujo runtime gotchas in `AGENTS.md`/`CONTRIBUTING.md` (one `for` per scope,
   `write_text` delete-then-write, uniquely-named helper locals, char-safe string
   helpers, guarded `parse_json`/`parse_toml`).
-- Keep the rule that only `src/cli.kujo` prints and chooses exit codes; everything else
+- Keep the rule that only `src/command.kujo` prints and chooses exit codes; everything else
   returns `{"ok":…}` envelopes.
