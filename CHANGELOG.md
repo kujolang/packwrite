@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replaced the hosted-CI runtime placeholder with the pinned Kujo v1.1.0 Linux x64
   release artifact and SHA-256 verification before extraction or execution.
+- Updated both workflows to a commit-pinned Node 24 checkout action, removing the
+  hosted runner's Node 20 deprecation warning.
 
 ### Added
 

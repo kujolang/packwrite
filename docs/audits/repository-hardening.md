@@ -200,6 +200,7 @@ to the same repository remains outside the CLI's complete control.
 | `bash -n bin/packwrite tests/run.sh tests/cli_integration.sh .github/scripts/check-kujo-tool-artifacts.sh` | Passed |
 | `.github/scripts/check-kujo-tool-artifacts.sh HEAD^ HEAD` | Passed |
 | Kujo v1.1.0 Linux x64 release archive SHA-256 | Passed; pinned digest matched and binary reported `kujo 1.1.0` in an Ubuntu 22.04 container |
+| GitHub Actions CI run `33342320958` | Passed on a stock `ubuntu-latest` runner: pinned runtime install, Kujo checks, and the full offline suite |
 | `./bin/packwrite --help` | Passed |
 | `./bin/packwrite version` | Passed: `packwrite 1.0.0` |
 | `git diff --check` | Passed |
