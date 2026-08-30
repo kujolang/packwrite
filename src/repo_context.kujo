@@ -6,7 +6,7 @@
 # relevant files are referenced, and secret-looking paths are excluded and
 # surfaced as warnings.
 
-from src.util import truthy, is_text, has_extension, base_of, first_summary, lc, list_includes
+from src.util import truthy, is_text, has_extension, base_of, first_summary, lc, list_includes, has_line_control
 
 # Filenames/paths that must never be read or included, beyond the configured
 # exclude list. Matched by basename.
@@ -71,6 +71,9 @@ export func included(name, include) {
 # Should an entry be surfaced at all? Excluded names and secret-looking names are
 # always skipped (the warning wording elsewhere reflects that they are skipped).
 func skip_entry(name, exclude) {
+    if has_line_control(name) {
+        return true
+    }
     if is_excluded(name, exclude) {
         return true
     }
@@ -158,6 +161,8 @@ func scan_top(cwd, exclude, include) {
         nm := names[st_i]
         if looks_secret(nm) {
             warnings = push(warnings, "skipped secret-looking path from context: " + nm)
+        } else if has_line_control(nm) {
+            warnings = push(warnings, "skipped path with unsupported control characters from context")
         }
         if skip_entry(nm, exclude) == false && included(nm, include) {
             child := join_path(cwd, nm)
@@ -235,7 +240,7 @@ export func context_render(ctx) {
     out = out + "- MEGA_PROMPT present: " + s["mega_prompt"] + "\n"
     out = out + "\nTop level:\n" + render_entries(s["top_level"])
     out = out + render_subtrees(s["subtrees"])
-    return out
+    return "=== REPOSITORY CONTEXT BEGIN ===\n" + out + "=== REPOSITORY CONTEXT END ==="
 }
 
 func render_subtrees(subtrees) {

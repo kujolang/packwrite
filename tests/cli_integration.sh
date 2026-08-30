@@ -68,8 +68,44 @@ if [ ! -f "$TMP/agent/phases/99-orphan.md" ] && [ ! -f "$TMP/agent/STALE_ROOT.md
 if echo "$out" | grep -q "Pruned:"; then ok; else bad "init summary did not report pruned files"; fi
 if [ -f "$TMP/agent/MASTER.md" ]; then ok; else bad "legit file missing after prune"; fi
 
+# --- nested output dirs stage and promote as siblings of the final directory ---
+sed 's#agent/#build/agent/#g' "$TMP/fake.json" > "$TMP/fake-nested.json"
+rm -rf "$TMP/agent" "$TMP/build"
+export PACKWRITE_FAKE_RESPONSE_FILE="$TMP/fake-nested.json"
+if KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --output build/agent >/dev/null; then ok; else bad "nested output init failed"; fi
+if [ -f "$TMP/build/agent/MASTER.md" ]; then ok; else bad "nested output missing MASTER.md"; fi
+echo "stale" > "$TMP/build/agent/STALE.md"
+if KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --output build/agent --overwrite >/dev/null; then ok; else bad "nested output overwrite failed"; fi
+if [ ! -f "$TMP/build/agent/STALE.md" ]; then ok; else bad "nested output overwrite left stale file"; fi
+rm -rf "$TMP/build"
+export PACKWRITE_FAKE_RESPONSE_FILE="$TMP/fake.json"
+
+# --- output symlink ancestors are rejected before generation ---
+mkdir "$TMP/outside"
+ln -s "$TMP/outside" "$TMP/build"
+out="$(KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --output build/agent 2>&1 || true)"
+if echo "$out" | grep -q "symlink component"; then ok; else bad "symlink output ancestor was not rejected"; fi
+if [ ! -e "$TMP/outside/agent" ]; then ok; else bad "symlink output ancestor redirected a write outside the project"; fi
+rm "$TMP/build"
+
+# --- raw responses are private, atomic, and never overwrite existing files ---
+rm -rf "$TMP/agent" "$TMP/raw-response.txt"
+if KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --save-raw-response raw-response.txt >/dev/null; then ok; else bad "raw response save failed"; fi
+if [ -f "$TMP/raw-response.txt" ]; then ok; else bad "raw response file missing"; fi
+case "$(ls -l "$TMP/raw-response.txt")" in
+  -rw-------*) ok ;;
+  *) bad "raw response file is not owner-only" ;;
+esac
+raw_before="$(cksum "$TMP/raw-response.txt")"
+rm -rf "$TMP/agent"
+out="$(KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --save-raw-response raw-response.txt 2>&1 || true)"
+raw_after="$(cksum "$TMP/raw-response.txt")"
+if echo "$out" | grep -q "refusing to overwrite"; then ok; else bad "raw response overwrite was not refused"; fi
+if [ "$raw_before" = "$raw_after" ]; then ok; else bad "existing raw response file changed"; fi
+rm -f "$TMP/raw-response.txt"
+
 # --- validate passes ---
-if KUJO="$KUJO" "$BIN" validate >/dev/null; then ok; else bad "validate failed on good pack"; fi
+if KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md >/dev/null && KUJO="$KUJO" "$BIN" validate >/dev/null; then ok; else bad "validate failed on good pack"; fi
 
 # --- prompt commands ---
 if KUJO="$KUJO" "$BIN" prompt deepseek | grep -q "autonomous"; then ok; else bad "prompt deepseek missing content"; fi

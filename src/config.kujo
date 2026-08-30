@@ -57,6 +57,74 @@ export func default_exclude() {
     return [".env", ".env.local", ".git", "node_modules", "vendor", "dist", "build", ".next", "coverage", "target", ".venv"]
 }
 
+# Validate every active config value after all layers are applied. TOML is an
+# untrusted boundary: wrong-but-parseable types must fail cleanly instead of being
+# silently coerced (notably, the string "false" is truthy in Kujo).
+export func config_validate(cfg) {
+    if type(cfg) != "dict" {
+        return err("Invalid configuration: expected a table")
+    }
+    if is_text(cfg["prompt_file"]) == false {
+        return err("Invalid configuration: [prompt].file must be a non-empty string")
+    }
+    if is_text(cfg["output_dir"]) == false {
+        return err("Invalid configuration: [output].dir must be a non-empty string")
+    }
+    if type(cfg["output_overwrite"]) != "bool" {
+        return err("Invalid configuration: [output].overwrite must be a boolean")
+    }
+    if is_text(cfg["output_mode"]) == false {
+        return err("Invalid configuration: [output].mode must be a non-empty string")
+    }
+    if is_text(cfg["model_provider"]) == false || is_text(cfg["model_model"]) == false {
+        return err("Invalid configuration: [model].provider and [model].model must be non-empty strings")
+    }
+    if type(cfg["model_endpoint"]) != "string" {
+        return err("Invalid configuration: [model].endpoint must be a string")
+    }
+    if is_number(cfg["model_temperature"]) == false || cfg["model_temperature"] < 0 || cfg["model_temperature"] > 2 {
+        return err("Invalid configuration: [model].temperature must be a number between 0.0 and 2.0")
+    }
+    if is_number(cfg["model_timeout"]) == false || cfg["model_timeout"] <= 0 {
+        return err("Invalid configuration: [model].timeout must be a positive number of seconds")
+    }
+    if is_string_array(cfg["repo_include"]) == false || is_string_array(cfg["repo_exclude"]) == false {
+        return err("Invalid configuration: [repo_context].include and exclude must be arrays of strings")
+    }
+    if type(cfg["pack_min_phases"]) != "int" || type(cfg["pack_max_phases"]) != "int" {
+        return err("Invalid configuration: [pack].min_phases and max_phases must be integers")
+    }
+    if cfg["pack_min_phases"] <= 0 || cfg["pack_max_phases"] <= 0 || cfg["pack_min_phases"] > cfg["pack_max_phases"] {
+        return err("Invalid configuration: phase bounds must be positive and min_phases must not exceed max_phases")
+    }
+    if type(cfg["pack_include_deepseek"]) != "bool" || type(cfg["pack_include_codex"]) != "bool" || type(cfg["pack_include_checklist"]) != "bool" {
+        return err("Invalid configuration: [pack].include_* values must be booleans")
+    }
+    if type(cfg["run_name"]) != "string" {
+        return err("Invalid configuration: run_name must be a string")
+    }
+    return {"ok": true}
+}
+
+func is_number(value) {
+    return type(value) == "int" || type(value) == "float"
+}
+
+func is_string_array(values) {
+    if type(values) != "array" {
+        return false
+    }
+    mut sa_i := 0
+    sa_n := len(values)
+    while sa_i < sa_n {
+        if type(values[sa_i]) != "string" {
+            return false
+        }
+        sa_i = sa_i + 1
+    }
+    return true
+}
+
 # Parse a TOML file into a dict, never throwing. Returns {"ok":true,"value":dict}
 # or {"ok":false,"error":...}. A missing file is a soft "ok" with an empty dict.
 export func config_read_toml(path) {
@@ -264,6 +332,10 @@ export func config_resolve(flags, cwd, gpath) {
     }
 
     cfg = apply_flags(cfg, flags)
+    valid := config_validate(cfg)
+    if truthy(valid["ok"]) == false {
+        return valid
+    }
     if len(keys(flags)) > 0 {
         sources = push(sources, "flags")
     }

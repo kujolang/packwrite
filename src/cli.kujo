@@ -9,13 +9,13 @@
 #   1  operational failure (missing prompt, AI failure, validation failure)
 #   2  usage error (bad/missing arguments)
 
-from src.util import truthy, is_text
+from src.util import truthy, is_text, write_private_file_atomic, has_line_control
 from src.errors import is_ok, err_msg
 from src.config import config_load, config_defaults
 from src.prompt import prompt_resolve, prompt_read
 from src.repo_context import context_collect, context_render
-from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key
-from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_overwrite, pack_apply, pack_validate_config
+from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, validate_endpoint
+from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_overwrite, pack_apply, pack_validate_config, pack_validate_output_location
 from src.validate import validate_run
 from cli import parse_args
 
@@ -102,7 +102,10 @@ func cmd_init(tokens, inject) {
         print_error(err_msg(gen))
         return 1
     }
-    save_raw_response_if_requested(parsed, cwd, gen["text"])
+    raw_saved := save_raw_response_if_requested(parsed, cwd, gen["text"])
+    if raw_saved == false {
+        return 1
+    }
     if debug {
         debug_line := "debug: provider=" + "${gen["provider"]}" + ", model=" + "${gen["model"]}"
         debug_line = debug_line + ", finish_reason=" + safe_value(gen, "finish_reason", "unknown")
@@ -206,7 +209,7 @@ func cmd_validate(tokens) {
         return 1
     }
     cfg := loaded["config"]
-    cfg_guard := pack_validate_config(cfg)
+    cfg_guard := pack_validate_output_location(cfg, cwd)
     if is_ok(cfg_guard) == false {
         print_error(err_msg(cfg_guard))
         return 1
@@ -254,7 +257,7 @@ func cmd_prompt(tokens) {
         return 1
     }
     cfg := loaded["config"]
-    cfg_guard := pack_validate_config(cfg)
+    cfg_guard := pack_validate_output_location(cfg, cwd)
     if is_ok(cfg_guard) == false {
         print_error(err_msg(cfg_guard))
         return 1
@@ -323,7 +326,7 @@ func cmd_doctor(tokens) {
         return 1
     }
     cfg := loaded["config"]
-    cfg_guard := pack_validate_config(cfg)
+    cfg_guard := pack_validate_output_location(cfg, cwd)
     if is_ok(cfg_guard) == false {
         print_error(err_msg(cfg_guard))
         return 1
@@ -338,6 +341,12 @@ func cmd_doctor(tokens) {
     if is_text(endpoint) == false {
         estatus = "(none — set --endpoint or [model].endpoint)"
         blockers = push(blockers, "no endpoint resolved for provider '" + "${cfg["model_provider"]}" + "' (set --endpoint or [model].endpoint)")
+    } else {
+        endpoint_ok := validate_endpoint(endpoint)
+        if is_ok(endpoint_ok) == false {
+            estatus = "(invalid — " + err_msg(endpoint_ok) + ")"
+            blockers = push(blockers, err_msg(endpoint_ok))
+        }
     }
     print_kv(16, "endpoint", estatus)
     mut keystatus := "missing (set PACKWRITE_API_KEY or a provider key)"
@@ -517,7 +526,7 @@ func debug_enabled(parsed) {
 
 func save_raw_response_if_requested(parsed, cwd, text) {
     if has_key(parsed["flags"], "save-raw-response") == 0 {
-        return
+        return true
     }
     mut target := parsed["flags"]["save-raw-response"]
     if type(target) != "string" || trim(target) == "" {
@@ -527,8 +536,16 @@ func save_raw_response_if_requested(parsed, cwd, text) {
     if starts_with(path, "/") == false {
         path = join_path(cwd, path)
     }
-    write_file(path, text)
-    print("warning: raw model response saved to " + path + " (may contain sensitive data)")
+    if has_line_control(path) {
+        print_error("raw response path contains unsupported control characters")
+        return false
+    }
+    if write_private_file_atomic(path, text, false) == false {
+        print_error("refusing to overwrite or follow a symlink for raw response file: " + path)
+        return false
+    }
+    print("warning: raw model response saved with owner-only permissions to " + path + " (may contain sensitive data)")
+    return true
 }
 
 func print_help() {

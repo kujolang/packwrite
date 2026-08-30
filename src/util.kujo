@@ -27,6 +27,15 @@ export func has_substr(haystack, needle) {
     return contains(haystack, needle) == 1
 }
 
+# True when text contains line-breaking control characters that would make paths,
+# diagnostics, or generated context ambiguous in terminals and machine output.
+export func has_line_control(value) {
+    if type(value) != "string" {
+        return false
+    }
+    return contains(value, "\n") == 1 || contains(value, "\r") == 1 || contains(value, "\t") == 1
+}
+
 # True when `arr` contains `value` (string/scalar equality).
 export func list_includes(arr, value) {
     mut li_i := 0
@@ -105,10 +114,23 @@ export func read_text(path) {
 # runtime's overwrite flag is unreliable, so the caller supplies the intended
 # overwrite policy explicitly and the target is never written in place.
 export func write_file_atomic(path, content, overwrite) {
+    return write_file_atomic_mode(path, content, overwrite, "")
+}
+
+# Write sensitive diagnostics with owner-only permissions and the same atomic,
+# no-symlink behavior as normal writes.
+export func write_private_file_atomic(path, content, overwrite) {
+    return write_file_atomic_mode(path, content, overwrite, "600")
+}
+
+func write_file_atomic_mode(path, content, overwrite, mode) {
     if type(path) != "string" || trim(path) == "" {
         return false
     }
-    if path_exists(path) && path_is_symlink(path) {
+    if symlink_path(path) {
+        return false
+    }
+    if path_is_dir(path) {
         return false
     }
     if file_exists(path) && truthy(overwrite) == false {
@@ -120,6 +142,10 @@ export func write_file_atomic(path, content, overwrite) {
             delete_file(tmp)
         }
         write_file(tmp, to_string(content))
+        if mode != "" && set_file_mode(tmp, mode) == false {
+            delete_file(tmp)
+            return false
+        }
         rename_file(tmp, path)
         return true
     } except err {
@@ -128,6 +154,27 @@ export func write_file_atomic(path, content, overwrite) {
         }
         return false
     }
+}
+
+func symlink_path(path) {
+    mut linked := false
+    try {
+        linked = path_is_symlink(path)
+    } except err {
+        linked = false
+    }
+    return linked
+}
+
+func set_file_mode(path, mode) {
+    mut success := false
+    try {
+        result := spawn_process(["chmod", mode, path])
+        success = truthy(result.success)
+    } except err {
+        success = false
+    }
+    return success
 }
 
 # Create a directory tree one segment at a time (create_dir handles nested dirs

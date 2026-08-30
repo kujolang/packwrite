@@ -5,6 +5,7 @@
 
 KUJO ?= kujo
 KUJO_FILES := packwrite.kujo $(wildcard src/*.kujo) $(wildcard tests/*.kujo)
+SHELL_FILES := bin/packwrite tests/run.sh tests/cli_integration.sh .github/scripts/check-kujo-tool-artifacts.sh
 
 .DEFAULT_GOAL := help
 
@@ -21,8 +22,13 @@ check: ## Run `kujo check` on every .kujo file
 	@echo "kujo check: all files passed"
 
 .PHONY: test
-test: check ## Lint, then run the full test suite (unit + CLI integration, offline)
+test: check scripts ## Lint, check shell syntax, then run the full test suite (offline)
 	@KUJO="$(KUJO)" ./tests/run.sh
+
+.PHONY: scripts
+scripts: ## Check Bash launcher, test harness, and CI helper syntax
+	@bash -n $(SHELL_FILES)
+	@echo "bash syntax: all files passed"
 
 .PHONY: unit
 unit: ## Run only the offline unit assertions

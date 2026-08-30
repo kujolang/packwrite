@@ -7,7 +7,7 @@
 #
 # Manifest contract: { "files": [ { "path": "...", "content": "..." }, ... ] }
 
-from src.util import truthy, ensure_dir, parent_of, has_substr, str_find, str_rfind, lines_of, base_of, write_file_atomic
+from src.util import truthy, ensure_dir, parent_of, has_substr, str_find, str_rfind, lines_of, base_of, write_file_atomic, has_line_control
 from src.errors import err, msg_unparseable, msg_overwrite
 from src.repo_context import looks_secret
 from src.validate import validate_run, required_files, extract_phase_refs
@@ -21,6 +21,12 @@ export func extract_json(text) {
 
     unfenced := strip_fences(t)
     if starts_with(unfenced, "{") && ends_with(unfenced, "}") {
+        return unfenced
+    }
+
+    # Native substring detection is dramatically faster than a character-by-
+    # character scan for large non-JSON error bodies.
+    if contains(unfenced, "{") == 0 || contains(unfenced, "}") == 0 {
         return unfenced
     }
 
@@ -53,6 +59,13 @@ export func pack_parse(text) {
 }
 
 export func pack_parse_with_meta(text, meta) {
+    limits := pack_limits()
+    if type(text) != "string" {
+        return err(msg_unparseable() + " (expected a string response).")
+    }
+    if len(text) > limits["response_bytes"] {
+        return err("The model response exceeds the " + "${limits["response_bytes"]}" + "-byte safety limit.")
+    }
     raw := extract_json(text)
     mut parsed := null
     mut threw := false
@@ -74,7 +87,11 @@ export func pack_parse_with_meta(text, meta) {
     if type(files) != "array" || len(files) == 0 {
         return err(parse_error_with_diagnostics("\"files\" must be a non-empty array", text, meta))
     }
+    if len(files) > limits["files"] {
+        return err("The model response contains too many files (maximum " + "${limits["files"]}" + ").")
+    }
     mut out := []
+    mut total_bytes := 0
     mut pp_i := 0
     pp_n := len(files)
     while pp_i < pp_n {
@@ -91,10 +108,32 @@ export func pack_parse_with_meta(text, meta) {
         if trim(f["content"]) == "" {
             return err(parse_error_with_diagnostics("file entry " + "${pp_i}" + " has empty content", text, meta))
         }
+        if len(f["path"]) > limits["path_bytes"] {
+            return err("File entry " + "${pp_i}" + " path exceeds the " + "${limits["path_bytes"]}" + "-byte safety limit.")
+        }
+        if len(f["content"]) > limits["file_bytes"] {
+            return err("File entry " + "${pp_i}" + " content exceeds the " + "${limits["file_bytes"]}" + "-byte safety limit.")
+        }
+        total_bytes = total_bytes + len(f["content"])
+        if total_bytes > limits["total_bytes"] {
+            return err("Generated pack content exceeds the " + "${limits["total_bytes"]}" + "-byte safety limit.")
+        }
         out = push(out, {"path": f["path"], "content": f["content"]})
         pp_i = pp_i + 1
     }
     return {"ok": true, "files": out}
+}
+
+# Explicit resource ceilings for untrusted model output. They are intentionally
+# generous relative to normal 10-20 file Markdown packs.
+export func pack_limits() {
+    return {
+        "response_bytes": 16777216,
+        "files": 512,
+        "path_bytes": 4096,
+        "file_bytes": 2097152,
+        "total_bytes": 16777216
+    }
 }
 
 # Validate manifest shape and path safety before any file write.
@@ -107,10 +146,15 @@ export func pack_validate_manifest(files, cfg, cwd) {
     if type(files) != "array" || len(files) == 0 {
         return err("Manifest validation failed: files must be a non-empty array")
     }
+    limits := pack_limits()
+    if len(files) > limits["files"] {
+        return err("Manifest validation failed: too many files (maximum " + "${limits["files"]}" + ")")
+    }
 
     mut seen_paths := {}
     mut content_by_path := {}
     mut phase_count := 0
+    mut total_bytes := 0
     mut vm_i := 0
     vm_n := len(files)
     while vm_i < vm_n {
@@ -126,6 +170,16 @@ export func pack_validate_manifest(files, cfg, cwd) {
         }
         if type(content) != "string" || trim(content) == "" {
             return err("Manifest validation failed: file entry " + "${vm_i}" + " has empty content")
+        }
+        if len(path) > limits["path_bytes"] {
+            return err("Manifest validation failed: path exceeds the " + "${limits["path_bytes"]}" + "-byte safety limit")
+        }
+        if len(content) > limits["file_bytes"] {
+            return err("Manifest validation failed: file content exceeds the " + "${limits["file_bytes"]}" + "-byte safety limit: " + path)
+        }
+        total_bytes = total_bytes + len(content)
+        if total_bytes > limits["total_bytes"] {
+            return err("Manifest validation failed: total content exceeds the " + "${limits["total_bytes"]}" + "-byte safety limit")
         }
 
         if has_key(seen_paths, path) == 1 {
@@ -191,6 +245,9 @@ export func safe_target(path, cfg, cwd) {
     if starts_with(path, "/") {
         return err("Unsafe manifest path (absolute): " + path)
     }
+    if has_line_control(path) {
+        return err("Unsafe manifest path (control characters are not allowed)")
+    }
     if path_has_traversal_segment(path) {
         return err("Unsafe manifest path (traversal): " + path)
     }
@@ -207,6 +264,10 @@ export func safe_target(path, cfg, cwd) {
         return err("Unsafe manifest path (directory path): " + path)
     }
     out_dir := cfg["output_dir"]
+    location_ok := pack_validate_output_location(cfg, cwd)
+    if truthy(location_ok["ok"]) == false {
+        return location_ok
+    }
     if starts_with(path, out_dir + "/") == false && path != out_dir {
         return err("Manifest path escapes output dir '" + out_dir + "': " + path)
     }
@@ -227,8 +288,20 @@ export func pack_validate_config(cfg) {
     if type(out_dir) != "string" || trim(out_dir) == "" {
         return err("Unsafe output dir: must be a non-empty relative path")
     }
+    if len(out_dir) > pack_limits()["path_bytes"] {
+        return err("Unsafe output dir: path exceeds the " + "${pack_limits()["path_bytes"]}" + "-byte safety limit")
+    }
     if starts_with(out_dir, "/") {
         return err("Unsafe output dir (absolute): " + out_dir)
+    }
+    if has_line_control(out_dir) {
+        return err("Unsafe output dir: control characters are not allowed")
+    }
+    if has_substr(out_dir, "\\") {
+        return err("Unsafe output dir (backslash separator): " + out_dir)
+    }
+    if starts_with(out_dir, "~") {
+        return err("Unsafe output dir (home expansion): " + out_dir)
     }
     if out_dir == "." || out_dir == ".." {
         return err("Unsafe output dir: must name a directory under the project root")
@@ -245,13 +318,37 @@ export func pack_validate_config(cfg) {
     return {"ok": true}
 }
 
-# Refuse to overwrite an existing output dir unless allowed by config/flag.
-export func pack_guard_overwrite(cfg, cwd) {
+# Existing symlink components could redirect staged writes outside the project.
+# Reject them before the model call and again immediately before promotion.
+export func pack_validate_output_location(cfg, cwd) {
     cfg_ok := pack_validate_config(cfg)
     if truthy(cfg_ok["ok"]) == false {
         return cfg_ok
     }
+    parts := split(cfg["output_dir"], "/")
+    mut cur := cwd
+    mut ol_i := 0
+    ol_n := len(parts)
+    while ol_i < ol_n {
+        cur = join_path(cur, parts[ol_i])
+        if is_symlink_path(cur) {
+            return err("Unsafe output dir: symlink component is not allowed: " + parts[ol_i])
+        }
+        ol_i = ol_i + 1
+    }
+    return {"ok": true}
+}
+
+# Refuse to overwrite an existing output dir unless allowed by config/flag.
+export func pack_guard_overwrite(cfg, cwd) {
+    cfg_ok := pack_validate_output_location(cfg, cwd)
+    if truthy(cfg_ok["ok"]) == false {
+        return cfg_ok
+    }
     out_root := join_path(cwd, cfg["output_dir"])
+    if path_exists(out_root) && path_is_dir(out_root) == false {
+        return err("Output path exists and is not a directory: " + cfg["output_dir"])
+    }
     if path_is_dir(out_root) && truthy(cfg["output_overwrite"]) == false {
         return err(msg_overwrite(cfg["output_dir"]))
     }
@@ -300,7 +397,16 @@ export func pack_apply(files, cfg, cwd, dry_run) {
 
     # 2. Stage all writes in a temporary directory and validate before promoting.
     out_root := join_path(cwd, cfg["output_dir"])
-    stage_root := next_stage_root(cwd, cfg["output_dir"])
+    output_parent := parent_of(out_root)
+    ensure_dir(output_parent)
+    location_ready := pack_validate_output_location(cfg, cwd)
+    if truthy(location_ready["ok"]) == false {
+        return location_ready
+    }
+    stage_root := next_stage_root(out_root)
+    if stage_root == "" {
+        return err("Could not reserve a staging directory for " + cfg["output_dir"])
+    }
     ensure_dir(stage_root)
 
     mut wi := 0
@@ -312,7 +418,11 @@ export func pack_apply(files, cfg, cwd, dry_run) {
         if parent != "" {
             ensure_dir(parent)
         }
-        write_file_atomic(staged_target, pl["content"], true)
+        wrote := write_file_atomic(staged_target, pl["content"], true)
+        if wrote == false {
+            remove_tree(stage_root)
+            return err("Failed to write staged pack file: " + pl["rel"])
+        }
         wi = wi + 1
     }
 
@@ -324,7 +434,12 @@ export func pack_apply(files, cfg, cwd, dry_run) {
 
     # 3. Promote staged output into place.
     pruned := count_orphans(out_root, target_set)
-    promoted := promote_stage(stage_root, out_root, cfg["output_dir"])
+    location_final := pack_validate_output_location(cfg, cwd)
+    if truthy(location_final["ok"]) == false {
+        remove_tree(stage_root)
+        return location_final
+    }
+    promoted := promote_stage(stage_root, out_root)
     if truthy(promoted["ok"]) == false {
         remove_tree(stage_root)
         return promoted
@@ -360,33 +475,40 @@ func relative_output_path(path, out_dir) {
     return path
 }
 
-func next_stage_root(cwd, out_dir) {
+func next_stage_root(out_root) {
+    parent := parent_of(out_root)
+    name := base_of(out_root)
     mut idx := 0
     while idx < 1000 {
-        cand := join_path(cwd, "." + out_dir + ".packwrite-stage-" + "${idx}")
-        if file_exists(cand) == false && path_is_dir(cand) == false {
+        cand := join_path(parent, "." + name + ".packwrite-stage-" + "${idx}")
+        if path_exists(cand) == false && is_symlink_path(cand) == false {
             return cand
         }
         idx = idx + 1
     }
-    return join_path(cwd, "." + out_dir + ".packwrite-stage")
+    return ""
 }
 
-func next_backup_root(cwd, out_dir) {
+func next_backup_root(out_root) {
+    parent := parent_of(out_root)
+    name := base_of(out_root)
     mut idx := 0
     while idx < 1000 {
-        cand := join_path(cwd, "." + out_dir + ".packwrite-backup-" + "${idx}")
-        if file_exists(cand) == false && path_is_dir(cand) == false {
+        cand := join_path(parent, "." + name + ".packwrite-backup-" + "${idx}")
+        if path_exists(cand) == false && is_symlink_path(cand) == false {
             return cand
         }
         idx = idx + 1
     }
-    return join_path(cwd, "." + out_dir + ".packwrite-backup")
+    return ""
 }
 
-func promote_stage(stage_root, out_root, out_dir) {
+func promote_stage(stage_root, out_root) {
     if path_is_dir(out_root) {
-        backup := next_backup_root(parent_of(out_root), out_dir)
+        backup := next_backup_root(out_root)
+        if backup == "" {
+            return err("Could not reserve a backup directory for " + out_root)
+        }
         moved_old := move_path(out_root, backup)
         if truthy(moved_old["ok"]) == false {
             return moved_old
@@ -482,7 +604,7 @@ func collect_files(root) {
         cf_n := len(names)
         while cf_i < cf_n {
             p := join_path(dir, names[cf_i])
-            if path_is_dir(p) {
+            if path_is_dir(p) && path_is_symlink(p) == false {
                 stack = push(stack, p)
             } else {
                 out = push(out, p)
@@ -578,9 +700,11 @@ func parse_error_with_diagnostics(reason, text, meta) {
     finish_reason := meta_value(meta, "finish_reason", "")
     empty := trim(text) == ""
 
-    sanitized := sanitize_diagnostic_text(text)
-    head := compact_preview(first_n_chars(sanitized, 500))
-    tail := compact_preview(last_n_chars(sanitized, 500))
+    head := compact_preview(sanitize_diagnostic_text(first_n_chars(text, 500)))
+    mut tail := "[omitted for large response]"
+    if len(text) <= 20000 {
+        tail = compact_preview(sanitize_diagnostic_text(last_n_chars(text, 500)))
+    }
 
     mut msg := msg_unparseable() + " (" + reason + ")."
     msg = msg + " diagnostics provider=" + provider
@@ -718,6 +842,16 @@ func path_has_traversal_segment(path) {
         pts_i = pts_i + 1
     }
     return false
+}
+
+func is_symlink_path(path) {
+    mut linked := false
+    try {
+        linked = path_is_symlink(path)
+    } except err {
+        linked = false
+    }
+    return linked
 }
 
 func path_has_current_segment(path) {

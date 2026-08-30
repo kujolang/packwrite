@@ -13,11 +13,11 @@
 
 from src.util import truthy, has_substr, has_extension, base_of, parent_of
 from src.errors import is_ok, err_msg
-from src.config import config_defaults, config_load, config_read_toml, config_resolve
+from src.config import config_defaults, config_load, config_read_toml, config_resolve, config_validate
 from src.prompt import prompt_resolve, prompt_read, absolutize
 from src.repo_context import context_collect, is_excluded, looks_secret, included
-from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, ai_build_options
-from src.pack import pack_parse, pack_parse_with_meta, pack_validate_manifest, pack_apply, safe_target, pack_guard_overwrite, pack_validate_config, extract_json
+from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, ai_build_options, validate_endpoint
+from src.pack import pack_parse, pack_parse_with_meta, pack_validate_manifest, pack_apply, safe_target, pack_guard_overwrite, pack_validate_config, pack_validate_output_location, pack_limits, extract_json
 from src.validate import validate_run, extract_phase_refs, required_files
 
 mut passed := 0
@@ -119,6 +119,33 @@ func test_config() {
     check(is_ok(bad) == false, "malformed toml returns error envelope")
 }
 
+func test_config_validation() {
+    bad_bool := config_defaults()
+    bad_bool["output_overwrite"] := "false"
+    check(is_ok(config_validate(bad_bool)) == false, "string overwrite value rejected instead of becoming truthy")
+
+    bad_list := config_defaults()
+    bad_list["repo_exclude"] := ".git"
+    check(is_ok(config_validate(bad_list)) == false, "scalar repo exclude rejected")
+
+    bad_range := config_defaults()
+    bad_range["pack_min_phases"] := 12
+    bad_range["pack_max_phases"] := 6
+    check(is_ok(config_validate(bad_range)) == false, "inverted phase bounds rejected")
+
+    bad_temp := config_defaults()
+    bad_temp["model_temperature"] := "0.1"
+    check(is_ok(config_validate(bad_temp)) == false, "string model temperature rejected")
+
+    # Prove the layered TOML boundary invokes the same validation.
+    p := join_path(WORK, "packwrite.toml")
+    write_file(p, "[output]\noverwrite = \"false\"\n")
+    loaded := config_load({}, WORK)
+    check(is_ok(loaded) == false, "wrong TOML type fails config_load cleanly")
+    check(has_substr(err_msg(loaded), "must be a boolean"), "wrong TOML type has an actionable error")
+    delete_file(p)
+}
+
 func config_read_toml_setup() {
     p := join_path(WORK, "bad.toml")
     write_file(p, "this is = = not valid [toml\n")
@@ -152,6 +179,12 @@ func test_repo_context() {
     check(has_substr(rendered, "server.key") == false, "context excludes server.key")
     check(len(ctx["warnings"]) >= 1, "context warns about secret-looking files")
     check(ctx["summary"]["mega_prompt"] == "present", "mega prompt detected present")
+
+    controlled := join_path(WORK, "forged\nname.md")
+    write_file(controlled, "x\n")
+    ctx2 := context_collect(WORK, config_defaults())
+    check(list_has_substr(ctx2["warnings"], "control characters"), "context warns when a filename contains line controls")
+    delete_file(controlled)
 }
 
 func tojoin_names(entries) {
@@ -195,6 +228,9 @@ func test_ai_adapter() {
     check(has_substr(dp, "MEGA"), "distillation prompt embeds mega prompt")
     check(has_substr(dp, "files"), "distillation prompt specifies files manifest")
     check(has_substr(dp, "autonomous") || has_substr(dp, "CONTINUE"), "distillation prompt requests autonomy")
+    check(has_substr(dp, "untrusted project data"), "distillation prompt resists instructions embedded in project data")
+    check(is_ok(validate_endpoint("ftp://example.test/v1")) == false, "non-http endpoint rejected")
+    check(is_ok(validate_endpoint("https://user:pass@example.test/v1")) == false, "endpoint credentials rejected")
 }
 
 func test_pack_parse() {
@@ -292,6 +328,17 @@ func test_manifest_shape_validation() {
     secret_extra = push(secret_extra, {"path": "agent/.env", "content": "PACKWRITE_API_KEY=secret\n"})
     sev := pack_validate_manifest(secret_extra, cfg, WORK)
     check(is_ok(sev) == false, "manifest validator rejects secret-looking generated paths")
+
+    limits := pack_limits()
+    mut too_many := []
+    mut tm_i := 0
+    while tm_i <= limits["files"] {
+        too_many = push(too_many, {"path": "agent/extra-" + "${tm_i}" + ".md", "content": "x"})
+        tm_i = tm_i + 1
+    }
+    tmv := pack_validate_manifest(too_many, cfg, WORK)
+    check(is_ok(tmv) == false, "manifest file-count safety limit enforced")
+    check(has_substr(err_msg(tmv), "too many files"), "file-count limit error is actionable")
 }
 
 func test_no_partial_write_on_invalid_manifest() {
@@ -358,12 +405,40 @@ func test_pack_safety() {
     nested["output_dir"] := "build/agent"
     check(is_ok(pack_validate_config(nested)), "nested relative output_dir accepted")
 
+    backcfg := config_defaults()
+    backcfg["output_dir"] := "build\\agent"
+    check(is_ok(pack_validate_config(backcfg)) == false, "backslash output_dir rejected")
+    homecfg := config_defaults()
+    homecfg["output_dir"] := "~/agent"
+    check(is_ok(pack_validate_config(homecfg)) == false, "home-expansion output_dir rejected")
+    controlcfg := config_defaults()
+    controlcfg["output_dir"] := "agent\nforged"
+    check(is_ok(pack_validate_config(controlcfg)) == false, "control characters in output_dir rejected")
+
     # Hardening: backslash separators and home-expansion prefixes are rejected so
     # a manifest path cannot escape the sandbox on non-POSIX layouts.
     back := safe_target("agent\\..\\evil.md", cfg, WORK)
     check(is_ok(back) == false, "backslash path rejected")
     home := safe_target("~/secret.md", cfg, WORK)
     check(is_ok(home) == false, "home-expansion path rejected")
+    controlled := safe_target("agent/forged\npath.md", cfg, WORK)
+    check(is_ok(controlled) == false, "control characters in manifest path rejected")
+
+    # Existing symlink components must not redirect output outside the project.
+    linkroot := join_path(WORK, "linkroot")
+    outside := join_path(WORK, "outside")
+    create_dir(linkroot)
+    create_dir(outside)
+    sh("ln -s " + outside + " " + join_path(linkroot, "build"))
+    linkcfg := config_defaults()
+    linkcfg["output_dir"] := "build/agent"
+    check(is_ok(pack_validate_output_location(linkcfg, linkroot)) == false, "symlink output ancestor rejected")
+    check(is_ok(pack_guard_overwrite(linkcfg, linkroot)) == false, "overwrite guard rejects symlink output ancestor before generation")
+
+    brokenroot := join_path(WORK, "broken-linkroot")
+    create_dir(brokenroot)
+    sh("ln -s " + join_path(WORK, "missing-target") + " " + join_path(brokenroot, "build"))
+    check(is_ok(pack_validate_output_location(linkcfg, brokenroot)) == false, "dangling symlink output ancestor rejected")
 }
 
 func test_numeric_flag_validation() {
@@ -432,6 +507,37 @@ func test_pack_write_and_validate() {
     # Missing dir.
     v3 := validate_run(join_path(WORK, "nope"), cfg)
     check(truthy(v3["ok"]) == false, "missing pack dir fails validation")
+}
+
+func remap_manifest_files(out_dir) {
+    parsed := pack_parse(make_manifest())
+    mut out := []
+    mut rm_i := 0
+    rm_n := len(parsed["files"])
+    while rm_i < rm_n {
+        item := parsed["files"][rm_i]
+        suffix := substring(item["path"], 6, len(item["path"]))
+        out = push(out, {"path": out_dir + "/" + suffix, "content": item["content"]})
+        rm_i = rm_i + 1
+    }
+    return out
+}
+
+func test_nested_output_write() {
+    root := join_path(WORK, "nested-output")
+    create_dir(root)
+    cfg := config_defaults()
+    cfg["output_dir"] := "build/agent"
+    files := remap_manifest_files(cfg["output_dir"])
+    applied := pack_apply(files, cfg, root, false)
+    check(is_ok(applied), "nested output directory writes successfully")
+    check(file_exists(join_path(root, "build/agent/MASTER.md")), "nested output contains MASTER.md")
+
+    write_file(join_path(root, "build/agent/STALE.md"), "stale\n")
+    applied2 := pack_apply(files, cfg, root, false)
+    check(is_ok(applied2), "nested output clean overwrite succeeds")
+    check(applied2["pruned"] == 1, "nested output reports one pruned orphan")
+    check(file_exists(join_path(root, "build/agent/STALE.md")) == false, "nested output prunes stale file")
 }
 
 func link_error_present(errors) {
@@ -589,6 +695,7 @@ func test_validation_content_cues() {
 
 setup()
 test_config()
+test_config_validation()
 test_prompt()
 test_repo_context()
 test_ai_adapter()
@@ -598,6 +705,7 @@ test_apply_bad_path()
 test_pack_safety()
 test_numeric_flag_validation()
 test_pack_write_and_validate()
+test_nested_output_write()
 test_manifest_shape_validation()
 test_no_partial_write_on_invalid_manifest()
 test_phase_refs()
