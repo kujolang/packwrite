@@ -1,0 +1,51 @@
+{
+  "changed_files": [
+    "benchmarks/hardening/results/runledger/locks/2026-08-31-codex-packwrite-before-after-hardening-evaluation-001.lock",
+    "benchmarks/hardening/results/runledger/runs/2026-08-31-codex-packwrite-before-after-hardening-evaluation-001.json"
+  ],
+  "commands": [],
+  "cost": {
+    "cache_cost": null,
+    "currency": "USD",
+    "input_cost": null,
+    "output_cost": null,
+    "total_cost": null
+  },
+  "created_at": "2026-08-31T00:39:36Z",
+  "end_commit": "e869afff1542f24283fe974cec055f594278b3b1",
+  "followups": [
+    {
+      "at": "2026-08-31T03:14:37Z",
+      "text": "Profile successful 13-64-file generation; current medians were 21-56% slower while preserving hardening contracts."
+    },
+    {
+      "at": "2026-08-31T03:14:37Z",
+      "text": "Cross-repository: reconcile Eval suite-version, artifact-checksum, and last_run.json compare behavior."
+    }
+  ],
+  "git_dirty_end": true,
+  "git_dirty_start": false,
+  "id": "2026-08-31-codex-packwrite-before-after-hardening-evaluation-001",
+  "model": "codex",
+  "notes": [
+    {
+      "at": "2026-08-31T03:14:37Z",
+      "text": "Kujo Eval: baseline 4/11; current 11/11. Hyperfine: invalid 64 KiB baseline timed out at 5.015 s median; current completed at 0.566 s median."
+    }
+  ],
+  "prompt_file": null,
+  "provider": "local",
+  "repo_path": ".",
+  "start_commit": "b69652241b035a7216a59867d93073728849987e",
+  "status": "pass",
+  "task_name": "PackWrite before-after hardening evaluation",
+  "tests": [],
+  "updated_at": "2026-08-31T00:39:36Z",
+  "usage": {
+    "cache_read_tokens": null,
+    "cache_write_tokens": null,
+    "input_tokens": null,
+    "output_tokens": null
+  },
+  "verdict": "Evaluation completed reproducibly. CURRENT is partially better engineered: substantially stronger bounded-failure and reliability behavior, with meaningful normal-path latency, footprint, and context-size regressions documented."
+}
