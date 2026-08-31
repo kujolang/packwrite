@@ -1,0 +1,74 @@
+{
+  "name": "packwrite-hardening-before-after",
+  "description": "Deterministic behavioral scorecard applied unchanged to the pre-hardening and v1.1.0 PackWrite states.",
+  "version": "1.0.0",
+  "stop_on_failure": false,
+  "tests": [
+    {
+      "name": "minimal version command succeeds",
+      "check": "command_succeeds",
+      "tags": ["correctness", "minimal"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" version"}
+    },
+    {
+      "name": "valid existing pack validates",
+      "check": "command_succeeds",
+      "tags": ["correctness", "typical"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" validate"}
+    },
+    {
+      "name": "offline typical dry-run succeeds",
+      "check": "command_succeeds",
+      "tags": ["correctness", "typical"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" init-dry"}
+    },
+    {
+      "name": "nested output promotes safely",
+      "check": "command_succeeds",
+      "tags": ["reliability", "filesystem"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" nested-output"}
+    },
+    {
+      "name": "wrong-type overwrite config is rejected",
+      "check": "command_succeeds",
+      "tags": ["correctness", "failure"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" config-type"}
+    },
+    {
+      "name": "large invalid response fails within bounded time and output",
+      "check": "command_succeeds",
+      "tags": ["failure", "performance", "agent-output"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" invalid-large"}
+    },
+    {
+      "name": "oversized response is rejected before amplification",
+      "check": "command_succeeds",
+      "tags": ["failure", "stress", "resource-safety"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" oversized"}
+    },
+    {
+      "name": "raw response refuses overwrite and preserves evidence",
+      "check": "command_succeeds",
+      "tags": ["reliability", "evidence"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" raw-no-overwrite"}
+    },
+    {
+      "name": "read-only summary is machine-consumable",
+      "check": "command_succeeds",
+      "tags": ["agent-usability", "tool-efficiency"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" summary-json"}
+    },
+    {
+      "name": "doctor JSON preserves strict failure semantics",
+      "check": "command_succeeds",
+      "tags": ["agent-usability", "failure"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" doctor-json"}
+    },
+    {
+      "name": "symlinked output ancestor cannot redirect writes",
+      "check": "command_succeeds",
+      "tags": ["reliability", "filesystem", "failure"],
+      "params": {"command": "PW_R=__PW_ROOT__ PW_V=__PW_VARIANT__ PW_K=__PW_KUJO__ bash \"__PW_CASE__\" symlink-output"}
+    }
+  ]
+}

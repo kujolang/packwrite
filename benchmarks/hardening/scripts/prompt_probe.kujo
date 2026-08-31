@@ -1,0 +1,17 @@
+from src.config import config_defaults
+from src.repo_context import context_collect, context_render
+from src.ai import ai_distillation_prompt
+
+cwd := args()[0]
+cfg := config_defaults()
+mega := read_file(join_path(cwd, "MEGA_PROMPT.md"))
+ctx := context_collect(cwd, cfg)
+rendered := context_render(ctx)
+prompt := ai_distillation_prompt(mega, rendered, cfg)
+print(to_json({
+    "context_bytes": len(rendered),
+    "context_lines": len(split(rendered, "\n")),
+    "prompt_bytes": len(prompt),
+    "prompt_lines": len(split(prompt, "\n")),
+    "context_warnings": len(ctx["warnings"])
+}))
