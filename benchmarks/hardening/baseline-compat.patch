@@ -5,10 +5,10 @@ index 9ee736d..25d34a0 100644
 @@ -8,7 +8,7 @@
  # or via the bin/packwrite wrapper:
  #   ./bin/packwrite <command> [arguments]
- 
+
 -from src.cli import main
 +from src.command import main
- 
+
  code := main(args())
  exit(code)
 diff --git a/src/cli.kujo b/src/command.kujo
@@ -21,7 +21,7 @@ index 1207c65..35ff915 100644
 @@ -9,15 +9,14 @@
  #   1  operational failure (missing prompt, AI failure, validation failure)
  #   2  usage error (bad/missing arguments)
- 
+
 -from src.util import truthy, is_text
 +from src.util import truthy, is_text, list_includes
  from src.errors import is_ok, err_msg
@@ -32,13 +32,13 @@ index 1207c65..35ff915 100644
  from src.pack import pack_parse_with_meta, pack_validate_manifest, pack_guard_overwrite, pack_apply, pack_validate_config
  from src.validate import validate_run
 -from cli import parse_args
- 
+
  VERSION := "1.0.0"
- 
+
 @@ -36,6 +35,36 @@ func bool_flag_list() {
      return ["dry-run", "overwrite", "verbose", "help", "debug", "strict"]
  }
- 
+
 +# Benchmark-only compatibility copy of the parser previously imported from the
 +# runtime's source module. Semantics are unchanged.
 +func parse_args(tokens, bool_flags) {

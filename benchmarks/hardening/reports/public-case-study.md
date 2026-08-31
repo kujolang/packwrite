@@ -83,4 +83,3 @@ Run the scripts documented in
 [`benchmarks/hardening/README.md`](../README.md). Machine-readable results are
 in [`evaluation-results.json`](../results/evaluation-results.json), with raw
 Hyperfine, memory, test, and Kujo Eval evidence alongside them.
-
