@@ -1,0 +1,34 @@
+PackWrite init: starting
+[1/8] Resolving mega prompt...
+[2/8] Checking output directory safety...
+[3/8] Collecting repository context...
+[4/8] Building distillation prompt...
+[5/8] Requesting model output from deepseek/deepseek-v4-pro...
+[6/8] Parsing and validating the returned manifest...
+[7/8] Writing pack files to build/agent/...
+Generated files:
+    build/agent/MASTER.md
+    build/agent/TODO.md
+    build/agent/HANDOFF.md
+    build/agent/DECISIONS.md
+    build/agent/REVIEW_CHECKLIST.md
+    build/agent/DEEPSEEK_START.md
+    build/agent/CODEX_REVIEW_PROMPT.md
+    build/agent/phases/00-project-brief.md
+    build/agent/phases/01-alpha.md
+    build/agent/phases/02-beta.md
+    build/agent/phases/03-gamma.md
+    build/agent/phases/04-delta.md
+    build/agent/phases/05-epsilon.md
+[8/8] Running pack validation...
+PackWrite generated an agent pack.
+
+  Output:     build/agent/
+  Provider:   fake
+  Model:      fake
+  Files:      13
+  Phases:     6
+  Validation: passed with 0 warnings
+
+Next:
+  packwrite prompt deepseek

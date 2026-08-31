@@ -1,0 +1,12 @@
+PackWrite doctor
+  cwd:             /Users/robertdevore/2026/Kujolang/kujo-repos/packwrite/benchmarks/hardening/results/work/workspaces/baseline
+  provider:        anthropic
+  model:           deepseek-v4-pro
+  endpoint:        (none — set --endpoint or [model].endpoint)
+  api key:         missing (set PACKWRITE_API_KEY or a provider key)
+  prompt file:     MEGA_PROMPT.md (found)
+  output dir:      agent/ (present)
+
+doctor: 2 blocking issue(s) found (strict mode):
+  - no endpoint resolved for provider 'anthropic' (set --endpoint or [model].endpoint)
+  - no API key in the environment (set PACKWRITE_API_KEY or a provider key)

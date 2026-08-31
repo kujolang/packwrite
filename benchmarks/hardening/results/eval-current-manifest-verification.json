@@ -1,0 +1,1 @@
+{"data":{"path":"/Users/robertdevore/2026/Kujolang/kujo-repos/packwrite/benchmarks/hardening/results/eval-current/artifact-manifest.json"},"error":"Manifest does not include checksum entries. Re-run with --artifact-checksums or config artifact_checksums=true.","ok":false}

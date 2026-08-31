@@ -1,0 +1,23 @@
+{
+  "source": {
+    "files": 9,
+    "lines": 2916,
+    "nonblank_lines": 2669,
+    "functions": 148,
+    "branches": 436,
+    "todos": 11,
+    "bytes": 95336
+  },
+  "tests": {
+    "files": 4,
+    "lines": 850,
+    "nonblank_lines": 729,
+    "functions": 28,
+    "branches": 57,
+    "todos": 8,
+    "bytes": 40500
+  },
+  "tracked_like_files": 42,
+  "repository_bytes": 225189,
+  "direct_dependencies": 0
+}

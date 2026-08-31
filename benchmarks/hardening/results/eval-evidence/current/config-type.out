@@ -1,0 +1,1 @@
+error: Invalid configuration: [output].overwrite must be a boolean

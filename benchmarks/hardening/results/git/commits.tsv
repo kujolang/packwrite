@@ -1,0 +1,7 @@
+149a00497551fbdd1ba4022ef8cdc8d17b7b25b9	2026-08-30T18:51:31-04:00	harden pack generation boundaries
+c706c7a0bc6970777a175672b01b614aabe914e2	2026-08-30T18:55:07-04:00	document repository hardening audit
+bf1fe3a23eed6ac2d45b7d2e8358f3208ec8de3b	2026-08-30T19:30:25-04:00	wire pinned Kujo runtime in CI
+61959a121b13be523cb0306d7d1ecc9094947944	2026-08-30T19:30:30-04:00	complete PackWrite hardening follow-ups
+7e7b13a562ec9704d97c672d418244dc801d8c1e	2026-08-30T19:37:41-04:00	fix standalone Kujo release compatibility
+721cc14a761403620dc60574f644d82c7930b7e5	2026-08-30T19:38:58-04:00	refresh pinned workflow runtime
+b69652241b035a7216a59867d93073728849987e	2026-08-30T19:50:28-04:00	prepare v1.1.0 release

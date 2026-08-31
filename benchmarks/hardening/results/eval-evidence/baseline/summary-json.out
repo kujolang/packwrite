@@ -1,0 +1,2 @@
+error: 'summary' is planned for a future version and is not implemented yet.
+Available commands: init, validate, prompt, config, doctor. Run 'packwrite help'.

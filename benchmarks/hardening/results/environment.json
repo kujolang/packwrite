@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-08-31T03:08:20Z",
+  "os": "macOS 26.3.1 (25D771280a)",
+  "kernel": "Darwin 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:53:28 PST 2026; root:xnu-12377.91.3~2/RELEASE_X86_64",
+  "architecture": "x86_64",
+  "cpu": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+  "physical_cores": 6,
+  "logical_cores": 12,
+  "memory_bytes": 17179869184,
+  "filesystem": "/dev/disk1s2   466Gi   392Gi    23Gi    95%    6.9M  242M    3%   /System/Volumes/Data",
+  "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+  "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+  "kujo": "kujo 1.1.0",
+  "eval": "Contract version: 2.0.0",
+  "hyperfine": "hyperfine 1.20.0",
+  "network": "not used",
+  "provider": "offline fake response",
+  "model": "none",
+  "concurrent_load_note": "Other independent benchmark/build jobs were active on the shared host; paired runs used identical commands and report variance, but absolute latency is host-load sensitive."
+}

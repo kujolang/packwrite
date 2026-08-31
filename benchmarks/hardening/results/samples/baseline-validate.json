@@ -1,0 +1,7 @@
+{
+  "variant": "baseline",
+  "workload": "validate",
+  "exit_code": 0,
+  "bytes": 42,
+  "lines": 1
+}

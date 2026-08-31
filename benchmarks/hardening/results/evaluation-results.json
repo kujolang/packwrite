@@ -1,0 +1,524 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-08-31T03:13:07Z",
+  "boundary": {
+    "baseline": {
+      "sha": "f63425187d39580b36032b1f31731e3f086db9f1",
+      "timestamp": "2026-08-23T16:48:16-04:00",
+      "subject": "refactor: streamline CLI output helpers"
+    },
+    "current": {
+      "sha": "b69652241b035a7216a59867d93073728849987e",
+      "timestamp": "2026-08-30T19:50:28-04:00",
+      "subject": "prepare v1.1.0 release"
+    },
+    "baseline_reason": "Immediate parent of the first dedicated hardening commit 149a004; later than v1.0.0 and therefore avoids attributing two earlier maintenance commits to hardening.",
+    "baseline_compatibility_patch": "benchmarks/hardening/baseline-compat.patch"
+  },
+  "environment": {
+    "captured_at": "2026-08-31T03:08:20Z",
+    "os": "macOS 26.3.1 (25D771280a)",
+    "kernel": "Darwin 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:53:28 PST 2026; root:xnu-12377.91.3~2/RELEASE_X86_64",
+    "architecture": "x86_64",
+    "cpu": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
+    "physical_cores": 6,
+    "logical_cores": 12,
+    "memory_bytes": 17179869184,
+    "filesystem": "/dev/disk1s2   466Gi   392Gi    23Gi    95%    6.9M  242M    3%   /System/Volumes/Data",
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
+    "kujo": "kujo 1.1.0",
+    "eval": "Contract version: 2.0.0",
+    "hyperfine": "hyperfine 1.20.0",
+    "network": "not used",
+    "provider": "offline fake response",
+    "model": "none",
+    "concurrent_load_note": "Other independent benchmark/build jobs were active on the shared host; paired runs used identical commands and report variance, but absolute latency is host-load sensitive."
+  },
+  "methodology": {
+    "warmups": 3,
+    "measured_runs": 10,
+    "latency_unit": "seconds",
+    "memory_unit": "bytes"
+  },
+  "runtime": {
+    "init-13": {
+      "baseline": {
+        "n": 10,
+        "min": 0.9197435461400001,
+        "max": 1.1912360351400002,
+        "mean": 1.02940033814,
+        "median": 1.0101317871400002,
+        "p95": 1.1912360351400002,
+        "p99": 1.1912360351400002,
+        "stddev": 0.09765120328952336
+      },
+      "current": {
+        "n": 10,
+        "min": 1.4028292751400002,
+        "max": 2.02542529214,
+        "mean": 1.5945684148400001,
+        "median": 1.5551876141400003,
+        "p95": 2.02542529214,
+        "p99": 2.02542529214,
+        "stddev": 0.17586871906123766
+      },
+      "change": {
+        "absolute_seconds": 0.5450558270000001,
+        "percent": 53.95888278530706,
+        "speedup": 0.6495240689648822
+      }
+    },
+    "init-32": {
+      "baseline": {
+        "n": 10,
+        "min": 4.20620480422,
+        "max": 5.87582196222,
+        "mean": 4.79139523022,
+        "median": 4.56788074422,
+        "p95": 5.87582196222,
+        "p99": 5.87582196222,
+        "stddev": 0.5003678100913901
+      },
+      "current": {
+        "n": 10,
+        "min": 4.48796159822,
+        "max": 6.44266056022,
+        "mean": 5.403018852120001,
+        "median": 5.54769064722,
+        "p95": 6.44266056022,
+        "p99": 6.44266056022,
+        "stddev": 0.5330413908912404
+      },
+      "change": {
+        "absolute_seconds": 0.9798099029999996,
+        "percent": 21.449988689827528,
+        "speedup": 0.823384185365312
+      }
+    },
+    "init-64": {
+      "baseline": {
+        "n": 10,
+        "min": 4.4068546798599995,
+        "max": 6.18150210486,
+        "mean": 5.286059176659999,
+        "median": 5.34276334386,
+        "p95": 6.18150210486,
+        "p99": 6.18150210486,
+        "stddev": 0.42737463700917966
+      },
+      "current": {
+        "n": 10,
+        "min": 7.4445999368599995,
+        "max": 9.40431158186,
+        "mean": 8.30188762036,
+        "median": 8.33148990486,
+        "p95": 9.40431158186,
+        "p99": 9.40431158186,
+        "stddev": 0.6104482027221915
+      },
+      "change": {
+        "absolute_seconds": 2.988726561,
+        "percent": 55.93971450063755,
+        "speedup": 0.6412734582734609
+      }
+    },
+    "invalid-1k": {
+      "baseline": {
+        "n": 10,
+        "min": 0.47013705968,
+        "max": 0.5529328346800001,
+        "mean": 0.51053609468,
+        "median": 0.5009774896800001,
+        "p95": 0.5529328346800001,
+        "p99": 0.5529328346800001,
+        "stddev": 0.025061643786195423
+      },
+      "current": {
+        "n": 10,
+        "min": 0.48879693868,
+        "max": 0.9107915086800001,
+        "mean": 0.6101086396800001,
+        "median": 0.5678512516800001,
+        "p95": 0.9107915086800001,
+        "p99": 0.9107915086800001,
+        "stddev": 0.11951805403448246
+      },
+      "change": {
+        "absolute_seconds": 0.06687376199999995,
+        "percent": 13.348656052932764,
+        "speedup": 0.882233662773213
+      }
+    },
+    "invalid-64k": {
+      "baseline": {
+        "n": 10,
+        "min": 5.00722054594,
+        "max": 5.02115587194,
+        "mean": 5.01492445204,
+        "median": 5.01533113094,
+        "p95": 5.02115587194,
+        "p99": 5.02115587194,
+        "stddev": 0.003634496374379174
+      },
+      "current": {
+        "n": 10,
+        "min": 0.5241545159400001,
+        "max": 0.66584699394,
+        "mean": 0.57132649794,
+        "median": 0.56570074194,
+        "p95": 0.66584699394,
+        "p99": 0.66584699394,
+        "stddev": 0.03672578102019125
+      },
+      "change": {
+        "absolute_seconds": -4.449630389,
+        "percent": -88.72057044349188,
+        "speedup": 8.865696576144746
+      }
+    },
+    "validate": {
+      "baseline": {
+        "n": 10,
+        "min": 0.37318411498,
+        "max": 0.43311308898,
+        "mean": 0.39674695698,
+        "median": 0.39122418398,
+        "p95": 0.43311308898,
+        "p99": 0.43311308898,
+        "stddev": 0.017523789820484036
+      },
+      "current": {
+        "n": 10,
+        "min": 0.40437874998,
+        "max": 0.50137962698,
+        "mean": 0.45366636328,
+        "median": 0.46243584898,
+        "p95": 0.50137962698,
+        "p99": 0.50137962698,
+        "stddev": 0.029062305057428295
+      },
+      "change": {
+        "absolute_seconds": 0.07121166500000004,
+        "percent": 18.202265584798432,
+        "speedup": 0.8460074729131134
+      }
+    },
+    "version": {
+      "baseline": {
+        "n": 10,
+        "min": 0.12499917346000002,
+        "max": 0.13562805146,
+        "mean": 0.12918706776000002,
+        "median": 0.12943533046,
+        "p95": 0.13562805146,
+        "p99": 0.13562805146,
+        "stddev": 0.0036133541265923343
+      },
+      "current": {
+        "n": 10,
+        "min": 0.12412421546,
+        "max": 0.16251679846,
+        "mean": 0.13568285206000003,
+        "median": 0.12795833146000002,
+        "p95": 0.16251679846,
+        "p99": 0.16251679846,
+        "stddev": 0.012320788287902722
+      },
+      "change": {
+        "absolute_seconds": -0.0014769989999999789,
+        "percent": -1.1411096141608899,
+        "speedup": 1.011542812282307
+      }
+    }
+  },
+  "memory_peak_rss": {
+    "baseline": {
+      "n": 10,
+      "min": 15847424,
+      "max": 16429056,
+      "mean": 16096460.8,
+      "median": 16093184,
+      "p95": 16429056,
+      "p99": 16429056,
+      "stddev": 159047.21058905747
+    },
+    "current": {
+      "n": 10,
+      "min": 16257024,
+      "max": 16871424,
+      "mean": 16523264.0,
+      "median": 16453632,
+      "p95": 16871424,
+      "p99": 16871424,
+      "stddev": 203699.31421386768
+    },
+    "change": {
+      "absolute_bytes": 360448,
+      "percent": 2.2397556630185798
+    }
+  },
+  "output_and_prompt_samples": {
+    "baseline-init-13": {
+      "variant": "baseline",
+      "workload": "init-13",
+      "exit_code": 0,
+      "bytes": 763,
+      "lines": 23
+    },
+    "baseline-invalid-1k": {
+      "variant": "baseline",
+      "workload": "invalid-1k",
+      "exit_code": 1,
+      "bytes": 1597,
+      "lines": 8
+    },
+    "baseline-invalid-64k": {
+      "variant": "baseline",
+      "workload": "invalid-64k",
+      "exit_code": 124,
+      "bytes": 292,
+      "lines": 7
+    },
+    "baseline-prompt": {
+      "context_bytes": 230,
+      "context_lines": 11,
+      "context_warnings": 0,
+      "prompt_bytes": 3034,
+      "prompt_lines": 69
+    },
+    "baseline-validate": {
+      "variant": "baseline",
+      "workload": "validate",
+      "exit_code": 0,
+      "bytes": 42,
+      "lines": 1
+    },
+    "baseline-version": {
+      "variant": "baseline",
+      "workload": "version",
+      "exit_code": 0,
+      "bytes": 16,
+      "lines": 1
+    },
+    "current-init-13": {
+      "variant": "current",
+      "workload": "init-13",
+      "exit_code": 0,
+      "bytes": 763,
+      "lines": 23
+    },
+    "current-invalid-1k": {
+      "variant": "current",
+      "workload": "invalid-1k",
+      "exit_code": 1,
+      "bytes": 1597,
+      "lines": 8
+    },
+    "current-invalid-64k": {
+      "variant": "current",
+      "workload": "invalid-64k",
+      "exit_code": 1,
+      "bytes": 1126,
+      "lines": 8
+    },
+    "current-prompt": {
+      "context_bytes": 292,
+      "context_lines": 12,
+      "context_warnings": 0,
+      "prompt_bytes": 3247,
+      "prompt_lines": 71
+    },
+    "current-validate": {
+      "variant": "current",
+      "workload": "validate",
+      "exit_code": 0,
+      "bytes": 42,
+      "lines": 1
+    },
+    "current-version": {
+      "variant": "current",
+      "workload": "version",
+      "exit_code": 0,
+      "bytes": 16,
+      "lines": 1
+    }
+  },
+  "reliability": {
+    "baseline": {
+      "runs": [
+        {
+          "exit_code": 1,
+          "seconds": 27.13,
+          "unit_passed": 144,
+          "unit_failed": 0,
+          "cli_passed": 46,
+          "cli_failed": 1
+        },
+        {
+          "exit_code": 0,
+          "seconds": 28.58,
+          "unit_passed": 144,
+          "unit_failed": 0,
+          "cli_passed": 47,
+          "cli_failed": 0
+        },
+        {
+          "exit_code": 0,
+          "seconds": 26.59,
+          "unit_passed": 144,
+          "unit_failed": 0,
+          "cli_passed": 47,
+          "cli_failed": 0
+        }
+      ],
+      "timing": {
+        "n": 3,
+        "min": 26.59,
+        "max": 28.58,
+        "mean": 27.433333333333334,
+        "median": 27.13,
+        "p95": 28.58,
+        "p99": 28.58,
+        "stddev": 0.8402512851654684
+      },
+      "successful_runs": 2
+    },
+    "current": {
+      "runs": [
+        {
+          "exit_code": 0,
+          "seconds": 75.72,
+          "unit_passed": 182,
+          "unit_failed": 0,
+          "cli_passed": 66,
+          "cli_failed": 0
+        },
+        {
+          "exit_code": 0,
+          "seconds": 80.62,
+          "unit_passed": 182,
+          "unit_failed": 0,
+          "cli_passed": 66,
+          "cli_failed": 0
+        },
+        {
+          "exit_code": 0,
+          "seconds": 83.93,
+          "unit_passed": 182,
+          "unit_failed": 0,
+          "cli_passed": 66,
+          "cli_failed": 0
+        }
+      ],
+      "timing": {
+        "n": 3,
+        "min": 75.72,
+        "max": 83.93,
+        "mean": 80.09,
+        "median": 80.62,
+        "p95": 83.93,
+        "p99": 83.93,
+        "stddev": 3.372605323287427
+      },
+      "successful_runs": 3
+    }
+  },
+  "eval": {
+    "baseline": {
+      "active_policy_stage": "",
+      "duration_ms": 29315,
+      "failed": 7,
+      "generated_at_ms": 1788145651525,
+      "pass_rate": 36,
+      "passed": 4,
+      "skipped": 0,
+      "status": "FAIL",
+      "suite_name": "packwrite-hardening-before-after",
+      "suite_version": "0.0.0",
+      "total": 11
+    },
+    "current": {
+      "active_policy_stage": "",
+      "duration_ms": 18726,
+      "failed": 0,
+      "generated_at_ms": 1788145676549,
+      "pass_rate": 100,
+      "passed": 11,
+      "skipped": 0,
+      "status": "PASS",
+      "suite_name": "packwrite-hardening-before-after",
+      "suite_version": "0.0.0",
+      "total": 11
+    }
+  },
+  "code_metrics": {
+    "baseline": {
+      "source": {
+        "files": 9,
+        "lines": 2916,
+        "nonblank_lines": 2669,
+        "functions": 148,
+        "branches": 436,
+        "todos": 11,
+        "bytes": 95336
+      },
+      "tests": {
+        "files": 4,
+        "lines": 850,
+        "nonblank_lines": 729,
+        "functions": 28,
+        "branches": 57,
+        "todos": 8,
+        "bytes": 40500
+      },
+      "tracked_like_files": 42,
+      "repository_bytes": 225189,
+      "direct_dependencies": 0
+    },
+    "current": {
+      "source": {
+        "files": 9,
+        "lines": 3459,
+        "nonblank_lines": 3193,
+        "functions": 165,
+        "branches": 553,
+        "todos": 11,
+        "bytes": 115177
+      },
+      "tests": {
+        "files": 4,
+        "lines": 1075,
+        "nonblank_lines": 931,
+        "functions": 34,
+        "branches": 80,
+        "todos": 8,
+        "bytes": 52495
+      },
+      "tracked_like_files": 58,
+      "repository_bytes": 282092,
+      "direct_dependencies": 0
+    }
+  },
+  "token_measurement": {
+    "status": "not_demonstrated",
+    "reason": "Offline fake-response workloads make no model call and expose no tokenizer or provider usage counters."
+  },
+  "cost_model": {
+    "status": "not_demonstrated",
+    "reason": "No measured token or provider-compute delta exists."
+  },
+  "regressions": [
+    "Successful-path latency increased in every measured common workload.",
+    "Peak RSS increased for the 13-file dry-run workload.",
+    "Rendered prompt and repository-context bytes increased.",
+    "Source and test footprint increased."
+  ],
+  "limitations": [
+    "The shared host had unrelated build and benchmark jobs active; paired commands and variance are preserved, but absolute latency is load-sensitive.",
+    "The unmodified baseline cannot start on standalone Kujo 1.1.0; a documented parser/module compatibility patch was applied only to the disposable performance checkout.",
+    "The 64 KiB invalid-response baseline is right-censored at five seconds.",
+    "No live model/provider was used, so tokens, cost, network behavior, and end-to-end agent completion quality were not measured.",
+    "PackWrite is interpreted, so a PackWrite binary-size or compile-time comparison is not applicable."
+  ]
+}

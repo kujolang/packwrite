@@ -1,0 +1,43 @@
+Resolved configuration:
+  sources: defaults -> project:/Users/robertdevore/2026/Kujolang/kujo-repos/packwrite/benchmarks/hardening/results/work/workspaces/baseline/bad-config.toml -> flags
+{
+  "model_endpoint": "",
+  "model_model": "deepseek-v4-pro",
+  "model_provider": "deepseek",
+  "model_temperature": 0.1,
+  "model_timeout": 120,
+  "output_dir": "agent",
+  "output_mode": "autopilot",
+  "output_overwrite": "false",
+  "pack_include_checklist": true,
+  "pack_include_codex": true,
+  "pack_include_deepseek": true,
+  "pack_max_phases": 12,
+  "pack_min_phases": 6,
+  "prompt_file": "MEGA_PROMPT.md",
+  "repo_exclude": [
+    ".env",
+    ".env.local",
+    ".git",
+    "node_modules",
+    "vendor",
+    "dist",
+    "build",
+    ".next",
+    "coverage",
+    "target",
+    ".venv"
+  ],
+  "repo_include": [
+    "README.md",
+    "package.json",
+    "pyproject.toml",
+    "Cargo.toml",
+    "go.mod",
+    "kujo.toml",
+    "src",
+    "tests",
+    "docs"
+  ],
+  "run_name": ""
+}

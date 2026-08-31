@@ -1,0 +1,7 @@
+{
+  "variant": "current",
+  "workload": "invalid-64k",
+  "exit_code": 1,
+  "bytes": 1126,
+  "lines": 8
+}
