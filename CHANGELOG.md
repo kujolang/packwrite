@@ -7,31 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-13
+
 ### Fixed
 
-- Reject non-finite model temperature and timeout values before JSON output or provider dispatch.
+- Return errors when repository context or pack directories cannot be read, including in quiet and JSON modes.
+- Preserve the old pack and remove staging files when overwrite enumeration fails; report output-parent cleanup failures before staging.
+- Make `make install` return a failure when it cannot create the launcher symlink.
 
+- Reject non-finite model temperature and timeout values before JSON output or provider dispatch.
 - Count phase files relative to the configured output directory, excluding unrelated ancestor and auxiliary directories named `phases`.
 - Make doctor report empty, non-file, and unreadable mega prompts as blockers; strict mode now rejects them.
-
 - Return operational errors and remove partial staging output when directory creation fails.
 - Avoid early-closing prompt test pipes that can cause false broken-pipe failures.
 - Clarify that omitted repository include lists use defaults; an empty list includes all eligible names.
-
 - Preserve rendering of legacy repository context summaries without omission metadata.
-
 - Match built-in secret filenames regardless of case across context collection,
   manifest safety, and existing-pack validation; retain exact custom exclusions.
 - Report unreadable auxiliary Markdown as validation errors while preserving binary
   attachments and placeholder warnings for readable files.
-
 - Fail closed when an explicit offline response fixture is invalid, preserving file
   precedence without falling through to a live provider or inline response.
 - Reject manifest file/directory ancestor conflicts during dry-run and before writes;
   reject existing file ancestors of nested output paths before generation.
 - Return operational errors for unreadable, directory, or symlinked saved prompts;
   preserve verbatim valid prompts and missing-file fallback behavior.
-
 - Apply repository context filters to README excerpts and stack detection; skip
   symlinks and bound sorted directory summaries with explicit omission counts.
 - Reject directories, empty/unreadable required files, symlinks, and nested
@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   return error envelopes for unreadable prompt/config files.
 - Check every Bash script in the syntax gate and isolate unit test workspaces with
   `mktemp` and argument-vector subprocess calls.
+
+### Validation
+
+- Verify 248 unit and 116 CLI assertions offline, including 24 permission checks when run as a non-root user.
+- Verify compatibility with the pinned Kujo 1.2.2 runtime in hosted CI.
 
 ## [1.1.0] - 2026-08-30
 

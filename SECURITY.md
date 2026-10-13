@@ -59,7 +59,8 @@ PackWrite is designed to minimize what leaves your machine.
 
 | Version | Supported |
 | ------- | --------- |
-| 1.1.x   | ✅        |
+| 1.1.1 (latest) | ✅   |
+| 1.1.0   | Upgrade to 1.1.1 for the latest fixes |
 | 1.0.x   | ✅        |
 
 ## Reporting a vulnerability

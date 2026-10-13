@@ -1,18 +1,15 @@
 # PackWrite
 
-[![Version](https://img.shields.io/badge/version-1.1.0-black)](https://github.com/kujolang/packwrite/releases/tag/v1.1.0)
+[![Version](https://img.shields.io/badge/version-1.1.1-black)](https://github.com/kujolang/packwrite/releases/tag/v1.1.1)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
-**PackWrite is an AI-assisted, local-first workflow-pack compiler that turns project intent into validated agent execution packs.**
+**PackWrite turns a project brief into a validated execution pack for coding agents.**
 
-You brainstorm a project with a strategy AI, save the result as a `MEGA_PROMPT.md`, and
-run `packwrite` inside your repo. PackWrite reads the mega prompt, inspects lightweight
-repository context, calls a model through a swappable adapter, and writes a validated
-`/agent` pack that an implementation agent can follow phase by phase.
-
-PackWrite does **not** implement your project. It writes the operating manual other
-agents can use to implement it.
+Save your brief as `MEGA_PROMPT.md` and run PackWrite in your repository. It sends
+the brief and a small repository summary to a model, then writes an `agent/` directory
+with phase plans, acceptance criteria, handoff notes, and review prompts. PackWrite
+checks the pack's structure and paths; you review its content before using it.
 
 ```text
 strategy AI → MEGA_PROMPT.md → packwrite → /agent pack → implementation agent → reviewer
@@ -39,9 +36,8 @@ strategy AI → MEGA_PROMPT.md → packwrite → /agent pack → implementation 
 
 ## Why PackWrite
 
-Handing a coding agent one giant prompt invites drift: it loses context, skips steps, or
-overbuilds. PackWrite turns that prompt into a stable, guardrailed, repo-local pack that
-separates concerns the way a good project does:
+A large task needs a record of its scope, progress, and decisions. PackWrite keeps
+that record beside your code:
 
 - **`MASTER.md`** — stable project intent + assumptions (don't rewrite).
 - **`phases/*.md`** — per-phase specs with scope, out-of-scope, and acceptance criteria.
@@ -50,22 +46,14 @@ separates concerns the way a good project does:
 - **`DEEPSEEK_START.md` / `CODEX_REVIEW_PROMPT.md`** — ready-to-paste prompts for an
   implementation agent and an independent reviewer.
 
-The *shape* of that pack is enforced by deterministic code; the model only fills in
-content. That's what keeps the output reviewable and reusable by downstream agents.
+Code validates the required files, sections, and paths. The model writes the content.
 
 ## Readiness and scope
 
-PackWrite is locally usable for individual and team workflows that need a repeatable
-way to turn project intent into a validated agent pack. Its strongest guarantees are around
-deterministic structure, offline testability, conservative context collection, staged
-writes, path safety, and explicit CLI failure modes.
-
-It is not a hosted production or enterprise platform. PackWrite does not provide SaaS
-auth, org policy management, audit-log storage, multi-user coordination, signing,
-notarization, deployment controls, or native support for every model provider protocol.
-Those concerns belong around PackWrite in a larger deployment. The CLI stays
-intentionally small: one local command, one model boundary, and a pack that can be
-reviewed before another agent acts on it.
+PackWrite creates local planning files. It does not implement your project, deploy
+code, or coordinate concurrent writers. Review generated instructions before giving
+them to an agent. Hosted authentication, organization policy, signing, and deployment
+controls belong to the systems that run PackWrite.
 
 Current hardening includes:
 
@@ -81,8 +69,10 @@ PackWrite is written in the [Kujo language](#about-kujo) and run by the Kujo
 interpreter. Install Kujo so the `kujo` command is available on your `PATH`:
 
 ```bash
-# from anywhere
-/path/to/packwrite/bin/packwrite --help
+# get the released source
+git clone --branch v1.1.1 --depth 1 https://github.com/kujolang/packwrite.git
+cd packwrite
+./bin/packwrite --help
 
 # or install the launcher on your PATH
 make install                      # symlinks bin/packwrite into /usr/local/bin
@@ -130,10 +120,11 @@ Next:
   packwrite prompt deepseek
 ```
 
-`init` now also prints live stage progress (for example `[3/8] Collecting repository context...`)
-so you can see work happening while model generation is in flight.
+`init` prints each stage, such as `[3/8] Collecting repository context...`.
+Use `--quiet` to suppress successful progress and summary output.
 
-If you want to preview the pack without writing anything, use `--dry-run`:
+`--dry-run` calls the model and validates the returned manifest without writing a
+pack. It can incur provider charges:
 
 ```bash
 packwrite init MEGA_PROMPT.md --dry-run
@@ -200,7 +191,7 @@ temperature = 0.1
 # endpoint = "https://api.deepseek.com/chat/completions"   # override the preset
 
 [repo_context]
-# include = top-level allow-list (empty/omitted = everything not excluded)
+# include = top-level allow-list; omit for defaults, use [] for all eligible names
 include = ["README.md", "Cargo.toml", "package.json", "pyproject.toml", "src", "tests", "docs"]
 exclude = [".env", ".git", "node_modules", "vendor", "dist", "build", ".next", "coverage"]
 
@@ -219,8 +210,8 @@ See also [`packwrite.example.toml`](packwrite.example.toml).
 
 ## Model / provider selection
 
-PackWrite is provider-swappable: it calls the in-house AI SDK (`ai_chat`) behind a small
-adapter rather than hardcoding one provider. Pick a provider/model with flags or config.
+Choose a provider and model with flags or config. PackWrite calls the Kujo
+`ai_chat` builtin through an adapter.
 
 **The adapter speaks only the OpenAI-compatible chat-completions protocol** (it posts
 `{model, messages}`, authenticates with `Authorization: Bearer`, and reads
@@ -236,10 +227,8 @@ providers that expose that protocol natively:
 Any other provider has **no preset** and must point `--endpoint` (or `[model].endpoint`)
 at an OpenAI-compatible URL — a gateway such as OpenRouter or LiteLLM works well.
 
-Pass a real model name for your provider with `--model` (or `[model].model`). For
-DeepSeek the current models are `deepseek-v4-pro` and `deepseek-v4-flash`. An unknown
-model surfaces the provider's own error, e.g. *"The supported API model names are
-deepseek-v4-pro or deepseek-v4-flash."*
+Set `--model` or `[model].model` to a model your endpoint supports. The default is
+`deepseek-v4-pro`; check your provider's available models before running generation.
 
 > **Anthropic is not supported natively.** Anthropic's API uses `/v1/messages` +
 > `x-api-key`, which this adapter does not speak. `--provider anthropic` with no endpoint
@@ -298,13 +287,14 @@ agent/
 PackWrite is conservative about what leaves your machine:
 
 - **API keys are read from the environment only** — never from flags, config, or logs.
-- **Your repo is never uploaded.** The model receives a lightweight summary: the root
-  name, a one-line README excerpt, the names of present manifest files, and a one-level
-  listing of included directories. **File contents are not sent.**
+- **The model receives your mega prompt and a bounded repository summary:** the root
+  name, a one-line README excerpt, detected languages, and included file/directory
+  names. PackWrite does not upload the full checkout. Keep sensitive data out of the
+  prompt and README excerpt.
 - **Secrets are excluded by default** (`.env*`, `*.pem`, `*.key`, `id_rsa`,
   `id_ed25519`, `.git`, `node_modules`, `vendor`, `dist`, `build`, `.next`, `coverage`,
   `target`, `.venv`, and names containing `secret`/`token`); skipped paths are reported.
-- **Writes are sandboxed** to the output directory (absolute, `..` traversal,
+- **Generated paths are restricted** to the output directory (absolute, `..` traversal,
   backslash-separator, `~` home-expansion, control-character, ambiguous-segment, and
   escaping paths are rejected), configured output directories must be relative project
   paths with no existing symlink components, and generated secret-looking paths are
@@ -364,7 +354,7 @@ make help       # list tasks
 
 The suite (248 unit + 116 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
-is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
+is required. The 24 permission assertions skip under root. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.
 
 Root files are intentionally kept for project entrypoints and governance:
@@ -380,8 +370,7 @@ drives developer tasks, `kujo.toml` identifies the Kujo package, and
 
 **Planned / not implemented** (running them prints a "planned for a future version"
 message and exits non-zero): `compare`, `repair-pack`. Also deferred: a
-Markdown-delimiter fallback parser (v1 is JSON-manifest only) and streaming output. The
-code is modular so these slot in without restructuring — see
+Markdown-delimiter fallback parser (v1 is JSON-manifest only) and streaming output. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#extension-points).
 
 ## Contributing, security, license
