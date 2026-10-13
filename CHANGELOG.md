@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Match built-in secret filenames regardless of case across context collection,
+  manifest safety, and existing-pack validation; retain exact custom exclusions.
+- Report unreadable auxiliary Markdown as validation errors while preserving binary
+  attachments and placeholder warnings for readable files.
+
 - Fail closed when an explicit offline response fixture is invalid, preserving file
   precedence without falling through to a live provider or inline response.
 - Reject manifest file/directory ancestor conflicts during dry-run and before writes;

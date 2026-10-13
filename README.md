@@ -73,7 +73,7 @@ Current hardening includes:
 - Model manifest paths are validated before dry-runs or writes claim success.
 - Secret-looking generated paths are rejected, not merely warned about after writing.
 - Writes are staged and validated before promotion, with rollback on failed promotion.
-- The full test suite is offline: 218 unit assertions and 74 CLI integration assertions.
+- The full test suite is offline: 229 unit assertions and 78 CLI integration assertions.
 
 ## Install
 
@@ -358,7 +358,7 @@ make check      # lint only
 make help       # list tasks
 ```
 
-The suite (218 unit + 74 CLI integration assertions) is **fully offline** — AI calls go
+The suite (229 unit + 78 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
 is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.

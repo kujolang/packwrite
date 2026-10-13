@@ -69,6 +69,9 @@ Default `exclude`:
 [".env", ".env.local", ".git", "node_modules", "vendor", "dist", "build", ".next", "coverage", "target", ".venv"]
 ```
 
+Built-in secret names are matched case-insensitively; configured include/exclude
+names remain exact and case-sensitive.
+
 Regardless of these lists, PackWrite **always** skips secret-looking paths (`.env*`,
 `*.pem`, `*.key`, `id_rsa`, `id_ed25519`, names containing `secret`/`token`, etc.) and
 never sends file contents beyond a single README summary line. See [SECURITY](../SECURITY.md).

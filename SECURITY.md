@@ -19,14 +19,16 @@ PackWrite is designed to minimize what leaves your machine.
 - **Secrets are excluded by default.** `.env*`, `*.pem`, `*.key`, `id_rsa`,
   `id_ed25519`, `.git`, `node_modules`, `vendor`, `dist`, `build`, `.next`,
   `coverage`, `target`, `.venv` and similar are excluded from context. Any
-  secret-looking path is skipped and surfaced as a warning.
+  secret-looking path is skipped and surfaced as a warning. Built-in names such as
+  `.env*` and `id_rsa` are matched regardless of case.
 - **Context reads honor the same filters as listings.** README and stack detection
   respect include/exclude lists; symlinked entries are skipped. Context lists are
   sorted and bounded (100 top-level entries, 12 subtrees of 100 entries), with
   explicit omission notices. README files over 64 KiB are not read for summaries.
 - **Existing packs are checked as files.** Required documents must be nonempty,
   readable regular files, and validation recursively rejects symlinks and
-  secret-looking paths without traversing linked directories.
+  secret-looking paths without traversing linked directories. Unreadable auxiliary
+  Markdown files fail validation; non-Markdown binary attachments remain allowed.
 - **Prompt payloads are not logged.** `--verbose` reports only prompt size; saving a
   raw model response requires the explicit `--save-raw-response` option.
 - **Writes are sandboxed to the output directory.** Manifest paths from the model are
