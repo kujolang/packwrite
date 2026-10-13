@@ -23,6 +23,14 @@ No prompt file was found. Pass one explicitly (`packwrite init path/to/prompt.md
 
 **`Mega prompt is empty: ...`** — the file exists but has no content.
 
+## Repository context
+
+**`Could not read repository context directory: …`** — check that the named directory
+still exists and that your user can list it. `init` stops with exit 1 before generation,
+including in quiet mode. Restore read/search permissions or explicitly exclude a
+subtree that should not contribute context; unreadable included trees are not silently
+omitted.
+
 ## Provider / model / endpoint
 
 **`The selected provider/model was not available through the AI SDK (provider=…, model=…). No endpoint is configured for provider '…'.`**
