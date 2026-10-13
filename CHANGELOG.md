@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject non-finite model temperature and timeout values before JSON output or provider dispatch.
+
 - Count phase files relative to the configured output directory, excluding unrelated ancestor and auxiliary directories named `phases`.
 - Make doctor report empty, non-file, and unreadable mega prompts as blockers; strict mode now rejects them.
 
