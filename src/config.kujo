@@ -9,7 +9,7 @@
 # returns is mapped onto our flat keys. Secrets are never read from config — API
 # keys come from the environment (see src/ai.kujo).
 
-from src.util import truthy, is_text
+from src.util import truthy, is_text, read_text
 from src.errors import err
 
 # Built-in defaults. Every key the rest of the tool reads is present here so the
@@ -131,7 +131,11 @@ export func config_read_toml(path) {
     if file_exists(path) == false {
         return {"ok": true, "value": {}}
     }
-    text := read_file(path)
+    read := read_text(path)
+    if truthy(read["ok"]) == false {
+        return err("Could not read TOML config at " + path)
+    }
+    text := read["text"]
     mut parsed := {}
     mut threw := false
     try {
@@ -147,6 +151,15 @@ export func config_read_toml(path) {
     }
     if type(parsed) != "dict" {
         return err("Config at " + path + " did not parse to a table")
+    }
+    sections := ["prompt", "output", "model", "repo_context", "pack"]
+    mut ct_i := 0
+    while ct_i < len(sections) {
+        section := sections[ct_i]
+        if has_key(parsed, section) == 1 && type(parsed[section]) != "dict" {
+            return err("Invalid configuration: [" + section + "] must be a table")
+        }
+        ct_i = ct_i + 1
     }
     return {"ok": true, "value": parsed}
 }
@@ -317,6 +330,9 @@ export func config_resolve(flags, cwd, gpath) {
     }
 
     ppath := project_config_path(flags, cwd)
+    if has_key(flags, "config") == 1 && is_text(flags["config"]) && file_exists(ppath) == false {
+        return err("Config file not found: " + ppath)
+    }
     if ppath != "" && file_exists(ppath) {
         pres := config_read_toml(ppath)
         if truthy(pres["ok"]) == false {

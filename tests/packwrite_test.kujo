@@ -15,7 +15,7 @@ from src.util import truthy, has_substr, has_extension, base_of, parent_of
 from src.errors import is_ok, err_msg
 from src.config import config_defaults, config_load, config_read_toml, config_resolve, config_validate
 from src.prompt import prompt_resolve, prompt_read, absolutize
-from src.repo_context import context_collect, is_excluded, looks_secret, included
+from src.repo_context import context_collect, context_render, is_excluded, looks_secret, included
 from src.ai import ai_generate, ai_distillation_prompt, resolve_endpoint, resolve_api_key, ai_build_options, validate_endpoint
 from src.pack import pack_parse, pack_parse_with_meta, pack_validate_manifest, pack_apply, safe_target, pack_guard_overwrite, pack_validate_config, pack_validate_output_location, pack_limits, extract_json
 from src.validate import validate_run, extract_phase_refs, required_files, summary_run, phase_file_count, missing_required_files
@@ -32,15 +32,18 @@ func check(cond, name) {
     }
 }
 
-func sh(cmd) {
-    return execute_status(cmd)
+func reserve_test_workspace() {
+    result := spawn_process(["mktemp", "-d", join_path(env_or("TMPDIR", "/tmp"), "packwrite-selftest.XXXXXX")])
+    if truthy(result.success) == false || trim(result.stdout) == "" {
+        print("Could not reserve a test workspace")
+        exit(1)
+    }
+    return trim(result.stdout)
 }
 
-WORK := join_path(env_or("TMPDIR", "/tmp"), "packwrite_selftest")
+WORK := reserve_test_workspace()
 
 func setup() {
-    sh("rm -rf " + WORK)
-    create_dir(WORK)
     write_file(join_path(WORK, "MEGA_PROMPT.md"), "# Demo\n\nBuild a thing.\n")
     write_file(join_path(WORK, "README.md"), "# Demo Project\n\nA demo for tests.\n")
     write_file(join_path(WORK, ".env"), "SECRET=top\n")
@@ -50,7 +53,7 @@ func setup() {
 }
 
 func teardown() {
-    sh("rm -rf " + WORK)
+    spawn_process(["rm", "-rf", WORK])
 }
 
 # ---------------------------------------------------------------------------
@@ -429,7 +432,7 @@ func test_pack_safety() {
     outside := join_path(WORK, "outside")
     create_dir(linkroot)
     create_dir(outside)
-    sh("ln -s " + outside + " " + join_path(linkroot, "build"))
+    spawn_process(["ln", "-s", outside, join_path(linkroot, "build")])
     linkcfg := config_defaults()
     linkcfg["output_dir"] := "build/agent"
     check(is_ok(pack_validate_output_location(linkcfg, linkroot)) == false, "symlink output ancestor rejected")
@@ -437,7 +440,7 @@ func test_pack_safety() {
 
     brokenroot := join_path(WORK, "broken-linkroot")
     create_dir(brokenroot)
-    sh("ln -s " + join_path(WORK, "missing-target") + " " + join_path(brokenroot, "build"))
+    spawn_process(["ln", "-s", join_path(WORK, "missing-target"), join_path(brokenroot, "build")])
     check(is_ok(pack_validate_output_location(linkcfg, brokenroot)) == false, "dangling symlink output ancestor rejected")
 }
 
@@ -645,7 +648,7 @@ func test_overwrite_prunes() {
     create_dir(stale_backup)
     write_file(join_path(stale_stage, "partial.md"), "stale\n")
     write_file(join_path(stale_backup, "old.md"), "stale\n")
-    sh("touch -t 202001010000 " + stale_stage + " " + stale_backup)
+    spawn_process(["touch", "-t", "202001010000", stale_stage, stale_backup])
 
     a2 := pack_apply(parsed["files"], cfg, ow, false)
     check(is_ok(a2), "second pack_apply ok")
@@ -734,12 +737,109 @@ func test_recovery_backup_retained() {
     backup := join_path(rb, ".agent.packwrite-backup-old")
     create_dir(backup)
     write_file(join_path(backup, "MASTER.md"), "recovery\n")
-    sh("touch -t 202001010000 " + backup)
+    spawn_process(["touch", "-t", "202001010000", backup])
     cfg := config_defaults()
     parsed := pack_parse(make_manifest())
     applied := pack_apply(parsed["files"], cfg, rb, false)
     check(is_ok(applied), "pack applies while recovery backup exists")
     check(path_is_dir(backup), "sole recovery backup retained when output was absent")
+}
+
+func test_context_boundaries() {
+    root := join_path(WORK, "context-boundaries")
+    create_dir(root)
+    create_dir(join_path(root, "src"))
+    write_file(join_path(root, "README.md"), "README_SENTINEL")
+    write_file(join_path(root, "Cargo.toml"), "")
+    cfg := config_defaults()
+    cfg["repo_include"] := ["src"]
+    filtered := context_collect(root, cfg)
+    check(filtered["summary"]["readme"] == "", "README respects include allow-list")
+    check(len(filtered["summary"]["languages"]) == 0, "stack detection respects include allow-list")
+    cfg["repo_include"] := []
+    cfg["repo_exclude"] := ["README.md", "Cargo.toml"]
+    excluded := context_collect(root, cfg)
+    check(excluded["summary"]["readme"] == "", "README respects exclude list")
+    check(len(excluded["summary"]["languages"]) == 0, "stack detection respects exclude list")
+    delete_file(join_path(root, "README.md"))
+    spawn_process(["ln", "-s", join_path(WORK, "README.md"), join_path(root, "README.md")])
+    spawn_process(["ln", "-s", WORK, join_path(root, "linked")])
+    cfg["repo_exclude"] := []
+    linked := context_collect(root, cfg)
+    check(linked["summary"]["readme"] == "", "README symlink content is never included")
+    check(has_substr(tojoin_names(linked["summary"]["top_level"]), "linked") == false, "context skips symlink directories")
+    mut cb_i := 0
+    while cb_i < 110 {
+        write_file(join_path(root, "src/file-" + to_string(cb_i) + ".txt"), "x")
+        cb_i = cb_i + 1
+    }
+    bounded := context_collect(root, cfg)
+    subtree := bounded["summary"]["subtrees"][0]
+    check(len(subtree["entries"]) == 100, "context subtree entry budget is enforced")
+    check(subtree["omitted"] == 10, "context reports omitted subtree entries")
+    check(subtree["entries"][0]["name"] == "file-0.txt", "context entries have deterministic lexical ordering")
+    check(has_substr(context_render(bounded), "10 additional entries omitted"), "model sees explicit context omission notice")
+    delete_file(join_path(root, "README.md"))
+    write_file(join_path(root, "README.md"), repeat("x", 65537))
+    large := context_collect(root, cfg)
+    check(has_substr(large["summary"]["readme"], "exceeds 64 KiB"), "oversized README summary omitted explicitly")
+    mut top_i := 0
+    while top_i < 105 {
+        write_file(join_path(root, "entry-" + to_string(top_i)), "x")
+        top_i = top_i + 1
+    }
+    top_limited := context_collect(root, cfg)
+    check(len(top_limited["summary"]["top_level"]) == 100, "top-level context entry budget is enforced")
+    check(top_limited["summary"]["omitted"] == 8, "top-level context omission count is exact")
+}
+
+func test_validation_file_boundaries() {
+    root := join_path(WORK, "validation-boundaries")
+    create_dir(root)
+    cfg := config_defaults()
+    parsed := pack_parse(make_manifest())
+    pack_apply(parsed["files"], cfg, root, false)
+    pack_root := join_path(root, "agent")
+    master := join_path(pack_root, "MASTER.md")
+    delete_file(master)
+    create_dir(master)
+    check(truthy(validate_run(pack_root, cfg)["ok"]) == false, "required directory is not a file")
+    check(len(missing_required_files(pack_root, cfg)) == 1, "summary reports required directory as missing file")
+    spawn_process(["rm", "-rf", master])
+    write_file(master, "")
+    check(truthy(validate_run(pack_root, cfg)["ok"]) == false, "empty required file fails validation")
+    delete_file(master)
+    spawn_process(["ln", "-s", join_path(WORK, "README.md"), master])
+    check(truthy(validate_run(pack_root, cfg)["ok"]) == false, "required symlink fails validation")
+    delete_file(master)
+    write_file(master, "# Master")
+    create_dir(join_path(pack_root, "nested"))
+    write_file(join_path(pack_root, "nested/token.txt"), "test sentinel")
+    check(truthy(validate_run(pack_root, cfg)["ok"]) == false, "validation detects nested secret-looking file")
+    delete_file(join_path(pack_root, "nested/token.txt"))
+    spawn_process(["ln", "-s", pack_root, join_path(pack_root, "nested/cycle")])
+    check(truthy(validate_run(pack_root, cfg)["ok"]) == false, "nested symlink cycle fails without traversal")
+    delete_file(join_path(pack_root, "nested/cycle"))
+    create_dir(join_path(pack_root, "phases/not-a-phase.md"))
+    check(phase_file_count(pack_root) == 6, "directories do not inflate phase count")
+    todo := join_path(pack_root, "TODO.md")
+    delete_file(todo)
+    write_file(todo, "phases/nested/01-alpha.md")
+    check(truthy(validate_run(pack_root, cfg)["ok"]) == false, "phase link subdirectory is not silently stripped")
+    refs := extract_phase_refs(repeat("phases/01-alpha.md ", 1001) + "phases/missing.md")
+    check(len(refs) == 1002, "phase references are not silently truncated after 1000")
+}
+
+func test_config_section_types() {
+    check(is_ok(config_resolve({"config": join_path(WORK, "absent.toml")}, WORK, "")) == false, "explicit missing config fails instead of silently using defaults")
+    check(is_ok(config_read_toml(WORK)) == false, "config directory returns an error envelope")
+    check(is_ok(prompt_read(WORK)) == false, "prompt directory returns an error envelope")
+    path := join_path(WORK, "section-types.toml")
+    write_file(path, "output = false\n")
+    check(is_ok(config_read_toml(path)) == false, "known config sections must be tables")
+    delete_file(path)
+    write_file(path, "[future_extension]\nvalue = true\n")
+    check(is_ok(config_read_toml(path)), "unknown config extension tables remain compatible")
 }
 
 # ---------------------------------------------------------------------------
@@ -769,6 +869,9 @@ test_validation_content_cues()
 test_summary_envelope()
 test_golden_pack_fixture()
 test_recovery_backup_retained()
+test_context_boundaries()
+test_validation_file_boundaries()
+test_config_section_types()
 teardown()
 
 print("")

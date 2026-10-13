@@ -4,7 +4,7 @@
 #   {"ok": bool, "errors": [...], "warnings": [...]}
 # where any error makes the pack unusable and warnings flag quality concerns.
 
-from src.util import truthy, has_substr, lines_of, base_of, str_find_from
+from src.util import truthy, has_substr, lines_of, str_find_from
 from src.repo_context import looks_secret
 
 # Required files depend on the pack_include_* config: a file that was intentionally
@@ -32,12 +32,12 @@ export func missing_required_files(out_root, cfg) {
     mut mr_i := 0
     mr_n := len(req)
     while mr_i < mr_n {
-        if file_exists(join_path(out_root, req[mr_i])) == false {
+        if regular_pack_file(join_path(out_root, req[mr_i])) == false {
             missing = push(missing, cfg["output_dir"] + "/" + req[mr_i])
         }
         mr_i = mr_i + 1
     }
-    if path_is_dir(join_path(out_root, "phases")) == false {
+    if path_is_dir(join_path(out_root, "phases")) == false || path_is_symlink(join_path(out_root, "phases")) {
         missing = push(missing, cfg["output_dir"] + "/phases")
     }
     return missing
@@ -45,7 +45,7 @@ export func missing_required_files(out_root, cfg) {
 
 export func phase_file_count(out_root) {
     phases_dir := join_path(out_root, "phases")
-    if path_is_dir(phases_dir) == false {
+    if path_is_dir(phases_dir) == false || path_is_symlink(phases_dir) {
         return 0
     }
     names := list_dir(phases_dir)
@@ -53,7 +53,7 @@ export func phase_file_count(out_root) {
     mut pc_i := 0
     pc_n := len(names)
     while pc_i < pc_n {
-        if ends_with(names[pc_i], ".md") {
+        if ends_with(names[pc_i], ".md") && regular_pack_file(join_path(phases_dir, names[pc_i])) {
             count = count + 1
         }
         pc_i = pc_i + 1
@@ -112,14 +112,24 @@ func has_review_cue(text) {
     return has_score && has_repair
 }
 
+func regular_pack_file(path) {
+    return path_is_file(path) && path_is_symlink(path) == false
+}
+
 func read_or_empty(path) {
-    if file_exists(path) == false {
+    if regular_pack_file(path) == false {
         return ""
     }
-    if path_is_dir(path) {
+    mut text := ""
+    try {
+        text = read_file(path)
+    } except err {
         return ""
     }
-    return read_file(path)
+    if type(text) != "string" {
+        return ""
+    }
+    return text
 }
 
 # Collect "phases/<name>.md" basenames referenced anywhere in `text`. Purely
@@ -129,14 +139,12 @@ export func extract_phase_refs(text) {
     needle := "phases/"
     nlen := len(needle)
     mut pos := str_find_from(text, needle, 0)
-    mut guard := 0
-    while pos >= 0 && guard < 1000 {
+    while pos >= 0 {
         tok := read_token_at(text, pos + nlen)
         if ends_with(tok, ".md") {
             refs = push(refs, tok)
         }
         pos = str_find_from(text, needle, pos + nlen)
-        guard = guard + 1
     }
     return refs
 }
@@ -194,7 +202,7 @@ export func validate_run(out_root, cfg) {
     mut errors := []
     mut warnings := []
 
-    if path_is_dir(out_root) == false {
+    if path_is_dir(out_root) == false || path_is_symlink(out_root) {
         errors = push(errors, "Output pack directory not found: " + out_root)
         return {"ok": false, "errors": errors, "warnings": warnings}
     }
@@ -205,15 +213,17 @@ export func validate_run(out_root, cfg) {
     rf_n := len(req)
     while rf_i < rf_n {
         p := join_path(out_root, req[rf_i])
-        if file_exists(p) == false {
+        if regular_pack_file(p) == false {
             errors = push(errors, "Missing required file: " + cfg["output_dir"] + "/" + req[rf_i])
+        } else if trim(read_or_empty(p)) == "" {
+            errors = push(errors, "Required file is empty or unreadable: " + cfg["output_dir"] + "/" + req[rf_i])
         }
         rf_i = rf_i + 1
     }
 
     # phases/ folder.
     phases_dir := join_path(out_root, "phases")
-    if path_is_dir(phases_dir) == false {
+    if path_is_dir(phases_dir) == false || path_is_symlink(phases_dir) {
         errors = push(errors, "Missing required folder: " + cfg["output_dir"] + "/phases")
     }
 
@@ -250,9 +260,9 @@ export func validate_run(out_root, cfg) {
     mut tr_i := 0
     tr_n := len(refs)
     while tr_i < tr_n {
-        bn := base_of(refs[tr_i])
+        bn := refs[tr_i]
         target := join_path(phases_dir, bn)
-        if file_exists(target) == false {
+        if has_substr(bn, "/") || regular_pack_file(target) == false {
             errors = push(errors, "Validation failed: TODO.md references missing phase file " + cfg["output_dir"] + "/phases/" + bn)
         }
         tr_i = tr_i + 1
@@ -264,7 +274,7 @@ export func validate_run(out_root, cfg) {
     warnings = concat_lists(warnings, presult["warnings"])
 
     # Placeholder + secret scan across the pack.
-    scanres := scan_pack(out_root, phases_dir)
+    scanres := scan_pack(out_root)
     warnings = concat_lists(warnings, scanres["warnings"])
     errors = concat_lists(errors, scanres["errors"])
 
@@ -305,7 +315,7 @@ func count_section_headings(text) {
 func check_phases(phases_dir, cfg) {
     mut errors := []
     mut warnings := []
-    if path_is_dir(phases_dir) == false {
+    if path_is_dir(phases_dir) == false || path_is_symlink(phases_dir) {
         return {"errors": errors, "warnings": warnings}
     }
     names := list_dir(phases_dir)
@@ -314,7 +324,7 @@ func check_phases(phases_dir, cfg) {
     cp_n := len(names)
     while cp_i < cp_n {
         nm := names[cp_i]
-        if ends_with(nm, ".md") {
+        if ends_with(nm, ".md") && regular_pack_file(join_path(phases_dir, nm)) {
             count = count + 1
             res := check_one_phase(join_path(phases_dir, nm), nm)
             errors = concat_lists(errors, res["errors"])
@@ -369,34 +379,33 @@ func check_one_phase(path, name) {
     return {"errors": errors, "warnings": warnings}
 }
 
-func scan_pack(out_root, phases_dir) {
+func scan_pack(out_root) {
     mut errors := []
     mut warnings := []
-    top := list_dir(out_root)
-    mut sp_i := 0
-    sp_n := len(top)
-    while sp_i < sp_n {
-        nm := top[sp_i]
-        if looks_secret(nm) {
-            errors = push(errors, "Pack contains a secret-looking file: " + nm)
-        }
-        if path_is_dir(join_path(out_root, nm)) == false {
-            if has_placeholder(read_or_empty(join_path(out_root, nm))) {
-                warnings = push(warnings, "Potential placeholder text remains in " + nm)
+    mut stack := [{"path": out_root, "relative": ""}]
+    while len(stack) > 0 {
+        scan_idx := len(stack) - 1
+        scan_entry := stack[scan_idx]
+        scan_dir := scan_entry["path"]
+        stack = slice(stack, 0, scan_idx)
+        scan_names := sort(list_dir(scan_dir))
+        mut sp_i := 0
+        while sp_i < len(scan_names) {
+            nm := scan_names[sp_i]
+            path := join_path(scan_dir, nm)
+            label := scan_entry["relative"] + nm
+            if path_is_symlink(path) {
+                errors = push(errors, "Pack contains a symlink: " + label)
+            } else if looks_secret(nm) {
+                errors = push(errors, "Pack contains a secret-looking file: " + label)
+            } else if path_is_dir(path) {
+                stack = push(stack, {"path": path, "relative": label + "/"})
+            } else if path_is_file(path) == false {
+                errors = push(errors, "Pack contains a non-regular file: " + label)
+            } else if has_placeholder(read_or_empty(path)) {
+                warnings = push(warnings, "Potential placeholder text remains in " + label)
             }
-        }
-        sp_i = sp_i + 1
-    }
-    if path_is_dir(phases_dir) {
-        pnames := list_dir(phases_dir)
-        mut pj := 0
-        pn := len(pnames)
-        while pj < pn {
-            pnm := pnames[pj]
-            if has_placeholder(read_or_empty(join_path(phases_dir, pnm))) {
-                warnings = push(warnings, "Potential placeholder text remains in phases/" + pnm)
-            }
-            pj = pj + 1
+            sp_i = sp_i + 1
         }
     }
     return {"errors": errors, "warnings": warnings}

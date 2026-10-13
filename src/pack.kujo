@@ -224,8 +224,8 @@ export func pack_validate_manifest(files, cfg, cwd) {
         mut pr_i := 0
         pr_n := len(refs)
         while pr_i < pr_n {
-            phase_ref := out_dir + "/phases/" + base_of(refs[pr_i])
-            if has_key(seen_paths, phase_ref) == 0 {
+            phase_ref := out_dir + "/phases/" + refs[pr_i]
+            if has_substr(refs[pr_i], "/") || has_key(seen_paths, phase_ref) == 0 {
                 return err("Manifest validation failed: TODO.md references missing phase file " + phase_ref)
             }
             pr_i = pr_i + 1

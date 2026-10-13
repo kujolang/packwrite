@@ -106,7 +106,18 @@ export func read_text(path) {
     if path_is_dir(path) {
         return {"ok": false, "error": "path is a directory: " + path}
     }
-    text := read_file(path)
+    if path_is_file(path) == false {
+        return {"ok": false, "error": "path is not a regular file: " + path}
+    }
+    mut text := ""
+    try {
+        text = read_file(path)
+    } except err {
+        return {"ok": false, "error": "could not read UTF-8 file: " + path}
+    }
+    if type(text) != "string" {
+        return {"ok": false, "error": "could not read UTF-8 file: " + path}
+    }
     return {"ok": true, "text": text}
 }
 

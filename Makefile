@@ -5,7 +5,7 @@
 
 KUJO ?= kujo
 KUJO_FILES := packwrite.kujo $(wildcard src/*.kujo) $(wildcard tests/*.kujo)
-SHELL_FILES := bin/packwrite tests/run.sh tests/cli_integration.sh .github/scripts/check-kujo-tool-artifacts.sh
+SHELL_FILES := bin/packwrite tests/run.sh tests/cli_integration.sh .github/scripts/check-kujo-tool-artifacts.sh $(wildcard benchmarks/hardening/scripts/*.sh)
 
 .DEFAULT_GOAL := help
 
@@ -27,7 +27,7 @@ test: check scripts ## Lint, check shell syntax, then run the full test suite (o
 
 .PHONY: scripts
 scripts: ## Check Bash launcher, test harness, and CI helper syntax
-	@bash -n $(SHELL_FILES)
+	@for f in $(SHELL_FILES); do bash -n "$$f" || exit 1; done
 	@echo "bash syntax: all files passed"
 
 .PHONY: unit

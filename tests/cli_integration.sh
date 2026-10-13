@@ -248,5 +248,13 @@ out="$(KUJO="$KUJO" "$BIN" init --help 2>&1)"
 if [ "$out" = "$init_help_expected" ]; then ok; else bad "init help output changed"; fi
 
 echo ""
+# Every shell input must be parsed, including files after the first argument.
+printf 'if then\n' > "$TMP/invalid.sh"
+if make -s -C "$PROJECT_DIR" scripts SHELL_FILES="bin/packwrite $TMP/invalid.sh" >/dev/null 2>&1; then
+  bad "shell syntax gate ignored a malformed second script"
+else
+  ok
+fi
+
 echo "cli integration: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
