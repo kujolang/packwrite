@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fail closed when an explicit offline response fixture is invalid, preserving file
+  precedence without falling through to a live provider or inline response.
+- Reject manifest file/directory ancestor conflicts during dry-run and before writes;
+  reject existing file ancestors of nested output paths before generation.
+- Return operational errors for unreadable, directory, or symlinked saved prompts;
+  preserve verbatim valid prompts and missing-file fallback behavior.
+
 - Apply repository context filters to README excerpts and stack detection; skip
   symlinks and bound sorted directory summaries with explicit omission counts.
 - Reject directories, empty/unreadable required files, symlinks, and nested

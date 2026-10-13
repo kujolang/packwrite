@@ -114,7 +114,7 @@ array keys.
 | `KUJO` | Path to the Kujo interpreter (used by `bin/packwrite`). |
 | `PACKWRITE_API_KEY` | Preferred API key; checked first for every provider. |
 | `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Provider-specific fallback keys. |
-| `PACKWRITE_FAKE_RESPONSE_FILE` | Test/offline seam: file whose contents are used as the model response. |
+| `PACKWRITE_FAKE_RESPONSE_FILE` | Test/offline seam: file whose contents are used as the model response. Takes precedence over the inline response; a missing/unreadable/non-file path fails without calling a provider. |
 | `PACKWRITE_FAKE_RESPONSE` | Test/offline seam: inline string used as the model response. |
 | `PACKWRITE_DEBUG` | If `1`/`true`/`yes`, enables `init` debug diagnostics without `--debug`. |
 
