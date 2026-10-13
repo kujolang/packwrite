@@ -273,7 +273,9 @@ export func context_render(ctx) {
     out = out + "- Existing /agent dir: " + s["agent_dir"] + "\n"
     out = out + "- MEGA_PROMPT present: " + s["mega_prompt"] + "\n"
     out = out + "\nTop level:\n" + render_entries(s["top_level"])
-    out = out + omission_notice(s["omitted"])
+    if has_key(s, "omitted") == 1 {
+        out = out + omission_notice(s["omitted"])
+    }
     out = out + "\nDirectory summaries: at most 12 included directories, 100 entries each.\n"
     out = out + render_subtrees(s["subtrees"])
     return "=== REPOSITORY CONTEXT BEGIN ===\n" + out + "=== REPOSITORY CONTEXT END ==="
@@ -288,7 +290,10 @@ func render_subtrees(subtrees) {
     rs_n := len(subtrees)
     while rs_i < rs_n {
         st := subtrees[rs_i]
-        out = out + "\n" + st["name"] + "/:\n" + render_entries(st["entries"]) + omission_notice(st["omitted"])
+        out = out + "\n" + st["name"] + "/:\n" + render_entries(st["entries"])
+        if has_key(st, "omitted") == 1 {
+            out = out + omission_notice(st["omitted"])
+        }
         rs_i = rs_i + 1
     }
     return out

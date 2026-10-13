@@ -169,6 +169,16 @@ func test_prompt() {
     check(absolutize("/abs/x", WORK) == "/abs/x", "absolutize keeps absolute")
 }
 
+func test_legacy_context_render() {
+    summary := {"root": "legacy", "readme": "", "languages": [], "suggested_checks": [], "top_level": [], "subtrees": [], "agent_dir": "absent", "mega_prompt": "present"}
+    legacy := {"summary": summary, "warnings": []}
+    check(has_substr(context_render(legacy), "Root directory: legacy"), "renderer accepts legacy top-level summary without omission metadata")
+    summary["subtrees"] = [{"name": "src", "entries": []}]
+    with_subtree := {"summary": summary, "warnings": []}
+    check(has_substr(context_render(with_subtree), "src/:"), "renderer accepts legacy subtrees without omission metadata")
+    check(has_substr(context_render(with_subtree), "additional entries omitted") == false, "legacy summary does not invent omission counts")
+}
+
 func test_repo_context() {
     check(is_excluded(".env", config_defaults()["repo_exclude"]), ".env excluded")
     check(is_excluded("server.key", config_defaults()["repo_exclude"]), "*.key excluded")
@@ -896,6 +906,7 @@ setup()
 test_config()
 test_config_validation()
 test_prompt()
+test_legacy_context_render()
 test_repo_context()
 test_ai_adapter()
 test_provider_presets()
