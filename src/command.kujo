@@ -518,7 +518,13 @@ func cmd_doctor(tokens) {
     }
     mut prompt_status := "missing"
     if file_exists(join_path(cwd, cfg["prompt_file"])) {
-        prompt_status = "found"
+        doctor_prompt := prompt_read(join_path(cwd, cfg["prompt_file"]))
+        if is_ok(doctor_prompt) {
+            prompt_status = "found"
+        } else {
+            prompt_status = "invalid"
+            blockers = push(blockers, err_msg(doctor_prompt))
+        }
     } else {
         blockers = push(blockers, "mega prompt file '" + cfg["prompt_file"] + "' not found")
     }

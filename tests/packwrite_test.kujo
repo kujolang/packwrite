@@ -169,6 +169,34 @@ func test_prompt() {
     check(absolutize("/abs/x", WORK) == "/abs/x", "absolutize keeps absolute")
 }
 
+func test_phase_count_output_path() {
+    pc_root := join_path(WORK, "phase-count-output")
+    create_dir(pc_root)
+    pc_cfg := config_defaults()
+    pc_cfg["output_dir"] = "build/phases/agent"
+    pc_source := pack_parse(make_manifest())["files"]
+    mut pc_files := []
+    mut pc_docs := []
+    mut pc_idx := 0
+    while pc_idx < len(pc_source) {
+        pc_file := pc_source[pc_idx]
+        pc_path := pc_cfg["output_dir"] + substring(pc_file["path"], 5, len(pc_file["path"]))
+        pc_files = push(pc_files, {"path": pc_path, "content": pc_file["content"]})
+        if parent_of(pc_file["path"]) == "agent" {
+            pc_docs = push(pc_docs, {"path": pc_path, "content": "Document without phase references."})
+        }
+        pc_idx = pc_idx + 1
+    }
+    pc_extra := {"path": pc_cfg["output_dir"] + "/notes/phases/info.md", "content": "Auxiliary notes."}
+    pc_files = push(pc_files, pc_extra)
+    pc_dry := pack_apply(pc_files, pc_cfg, pc_root, true)
+    check(is_ok(pc_dry) && pc_dry["phases"] == 6, "dry-run phase count ignores output ancestors and auxiliary directories")
+    pc_written := pack_apply(pc_files, pc_cfg, pc_root, false)
+    check(is_ok(pc_written) && pc_written["phases"] == phase_file_count(join_path(pc_root, pc_cfg["output_dir"])), "written phase count matches on-disk summary")
+    check(is_ok(pack_validate_manifest(pc_docs, pc_cfg, pc_root)) == false, "output ancestor named phases cannot satisfy required phase files")
+    check(is_ok(pack_validate_manifest(push(pc_docs, pc_extra), pc_cfg, pc_root)) == false, "auxiliary nested phases cannot satisfy required direct phase files")
+}
+
 func test_directory_creation_failure() {
     root := join_path(WORK, "directory-failure")
     create_dir(root)
@@ -921,6 +949,7 @@ setup()
 test_config()
 test_config_validation()
 test_prompt()
+test_phase_count_output_path()
 test_directory_creation_failure()
 test_legacy_context_render()
 test_repo_context()

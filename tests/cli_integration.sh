@@ -327,5 +327,27 @@ code=$?
 set -e
 if [ "$code" -eq 1 ] && [[ "$out" == *'Pack contains a secret-looking file: extra/.ENV'* ]]; then ok; else bad "existing uppercase secret file validated"; fi
 
+# Doctor uses the same prompt readability/content checks as init, without a request.
+mkdir "$TMP/doctor-prompt"
+for prompt_kind in empty directory invalid-utf8; do
+  prompt_path="$TMP/doctor-prompt/MEGA_PROMPT.md"
+  case "$prompt_kind" in
+    empty) : > "$prompt_path" ;;
+    directory) mkdir "$prompt_path" ;;
+    invalid-utf8) printf '\377' > "$prompt_path" ;;
+  esac
+  set +e
+  out="$(cd "$TMP/doctor-prompt" && PACKWRITE_API_KEY=offline-test-placeholder KUJO="$KUJO" "$BIN" doctor --strict --json 2>&1)"
+  code=$?
+  set -e
+  if [ "$code" -eq 1 ] && [[ "$out" == *'"prompt_status":"invalid"'* ]] && [[ "$out" == *'"ok":false'* ]]; then ok; else bad "doctor accepted $prompt_kind prompt: $out"; fi
+  out="$(cd "$TMP/doctor-prompt" && PACKWRITE_API_KEY=offline-test-placeholder KUJO="$KUJO" "$BIN" doctor --json)"
+  if [[ "$out" == *'"prompt_status":"invalid"'* ]] && [[ "$out" == *'"ok":false'* ]]; then ok; else bad "informational doctor lost prompt blocker"; fi
+  rm -rf "$prompt_path"
+done
+printf '# Valid prompt\n' > "$TMP/doctor-prompt/MEGA_PROMPT.md"
+out="$(cd "$TMP/doctor-prompt" && PACKWRITE_API_KEY=offline-test-placeholder KUJO="$KUJO" "$BIN" doctor --strict --json)"
+if [[ "$out" == *'"prompt_status":"found"'* ]] && [[ "$out" == *'"ok":true'* ]]; then ok; else bad "doctor rejected a valid prompt"; fi
+
 echo "cli integration: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -196,7 +196,7 @@ export func pack_validate_manifest(files, cfg, cwd) {
             return safe
         }
 
-        if is_phase_path(path) {
+        if is_phase_path(path, cfg["output_dir"]) {
             phase_count = phase_count + 1
         }
         vm_i = vm_i + 1
@@ -398,7 +398,7 @@ export func pack_apply(files, cfg, cwd, dry_run) {
             return guard
         }
         target := guard["target"]
-        if is_phase_path(path) {
+        if is_phase_path(path, cfg["output_dir"]) {
             phases = phases + 1
         }
         rel := relative_output_path(path, cfg["output_dir"])
@@ -968,8 +968,8 @@ func manifest_path_has_secret(path) {
     return false
 }
 
-func is_phase_path(path) {
-    if has_substr(path, "/phases/") == false {
+func is_phase_path(path, out_dir) {
+    if parent_of(path) != out_dir + "/phases" {
         return false
     }
     return ends_with(path, ".md")
