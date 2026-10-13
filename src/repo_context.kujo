@@ -19,18 +19,19 @@ export func secret_exts() {
     return [".pem", ".key", ".p12", ".pfx", ".keystore"]
 }
 
+# Built-in secret names ignore case; user-configured exclusions stay exact.
 # True when `name` should be excluded from context entirely.
 export func is_excluded(name, exclude) {
     if list_includes(exclude, name) {
         return true
     }
-    if starts_with(name, ".env") {
+    if starts_with(lc(name), ".env") {
         return true
     }
     if has_extension(name, secret_exts()) {
         return true
     }
-    if list_includes(secret_names(), name) {
+    if list_includes(secret_names(), lc(name)) {
         return true
     }
     return false
@@ -38,13 +39,13 @@ export func is_excluded(name, exclude) {
 
 # True when `name` looks like it carries secrets (used for warnings).
 export func looks_secret(name) {
-    if starts_with(name, ".env") {
+    if starts_with(lc(name), ".env") {
         return true
     }
     if has_extension(name, secret_exts()) {
         return true
     }
-    if list_includes(secret_names(), name) {
+    if list_includes(secret_names(), lc(name)) {
         return true
     }
     low := lc(name)

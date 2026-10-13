@@ -4,7 +4,7 @@
 #   {"ok": bool, "errors": [...], "warnings": [...]}
 # where any error makes the pack unusable and warnings flag quality concerns.
 
-from src.util import truthy, has_substr, lines_of, str_find_from
+from src.util import truthy, has_substr, lines_of, str_find_from, read_text
 from src.repo_context import looks_secret
 
 # Required files depend on the pack_include_* config: a file that was intentionally
@@ -402,8 +402,15 @@ func scan_pack(out_root) {
                 stack = push(stack, {"path": path, "relative": label + "/"})
             } else if path_is_file(path) == false {
                 errors = push(errors, "Pack contains a non-regular file: " + label)
-            } else if has_placeholder(read_or_empty(path)) {
-                warnings = push(warnings, "Potential placeholder text remains in " + label)
+            } else {
+                scanned := read_text(path)
+                if truthy(scanned["ok"]) {
+                    if has_placeholder(scanned["text"]) {
+                        warnings = push(warnings, "Potential placeholder text remains in " + label)
+                    }
+                } else if ends_with(to_lower(nm), ".md") {
+                    errors = push(errors, "Pack contains unreadable Markdown: " + label)
+                }
             }
             sp_i = sp_i + 1
         }

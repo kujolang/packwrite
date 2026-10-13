@@ -301,5 +301,31 @@ rmdir "$TMP/prompt-boundaries/agent/DEEPSEEK_START.md"
 out="$(cd "$TMP/prompt-boundaries" && KUJO="$KUJO" "$BIN" prompt deepseek 2>&1)"
 if [[ "$out" == note:*'printing a default prompt.'* ]]; then ok; else bad "missing prompt fallback changed"; fi
 
+# Auxiliary Markdown read errors must not turn into successful validation.
+cp -R "$PROJECT_DIR/tests/fixtures/golden-agent" "$TMP/read-boundary"
+mkdir "$TMP/read-boundary/extra"
+printf '\377' > "$TMP/read-boundary/extra/NOTES.MD"
+set +e
+out="$(KUJO="$KUJO" "$BIN" validate --output read-boundary --json 2>&1)"
+code=$?
+set -e
+if [ "$code" -eq 1 ] && [[ "$out" == *'Pack contains unreadable Markdown: extra/NOTES.MD'* ]]; then
+  ok
+else
+  bad "unreadable auxiliary Markdown validated: $out"
+fi
+# Non-Markdown binary attachments retain their established compatibility.
+mv "$TMP/read-boundary/extra/NOTES.MD" "$TMP/read-boundary/extra/attachment.bin"
+if KUJO="$KUJO" "$BIN" validate --output read-boundary --json >/dev/null; then ok; else bad "binary attachment compatibility changed"; fi
+printf 'FILL IN\n' > "$TMP/read-boundary/extra/NOTES.MD"
+out="$(KUJO="$KUJO" "$BIN" validate --output read-boundary --json 2>&1)"
+if [[ "$out" == *'Potential placeholder text remains in extra/NOTES.MD'* ]]; then ok; else bad "auxiliary Markdown placeholder warning was lost"; fi
+printf 'demo\n' > "$TMP/read-boundary/extra/.ENV"
+set +e
+out="$(KUJO="$KUJO" "$BIN" validate --output read-boundary --json 2>&1)"
+code=$?
+set -e
+if [ "$code" -eq 1 ] && [[ "$out" == *'Pack contains a secret-looking file: extra/.ENV'* ]]; then ok; else bad "existing uppercase secret file validated"; fi
+
 echo "cli integration: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

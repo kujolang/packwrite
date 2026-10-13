@@ -866,6 +866,28 @@ func test_second_pass_boundaries() {
     check(has_substr(err_msg(invalid_fake), "Invalid fake response"), "invalid fake never reaches provider resolution")
 }
 
+func test_final_pass_secret_case() {
+    check(is_excluded(".ENV", []), "uppercase env file is excluded")
+    check(is_excluded(".Env.local", []), "mixed-case env variant is excluded")
+    check(looks_secret("ID_RSA"), "uppercase private-key basename is secret-looking")
+    check(looks_secret(".NETRC"), "uppercase credential basename is secret-looking")
+    check(is_excluded("Custom", ["Custom"]), "configured exact exclusion remains active")
+    check(is_excluded("custom", ["Custom"]) == false, "configured exclusions remain case-sensitive")
+    check(looks_secret("README.MD") == false, "ordinary uppercase filenames remain allowed")
+    root := join_path(WORK, "case-boundary")
+    create_dir(root)
+    write_file(join_path(root, ".ENV"), "demo")
+    cfg := config_defaults()
+    cfg["repo_include"] := []
+    context := context_collect(root, cfg)
+    check(has_substr(tojoin_names(context["summary"]["top_level"]), ".ENV") == false, "context omits uppercase secret paths")
+    files := pack_parse(make_manifest())["files"]
+    secret_manifest := push(files, {"path": "agent/.ENV", "content": "demo"})
+    check(is_ok(pack_apply(secret_manifest, cfg, root, true)) == false, "dry run rejects uppercase secret path")
+    check(is_ok(pack_apply(secret_manifest, cfg, root, false)) == false, "real write rejects uppercase secret path")
+    check(path_is_dir(join_path(root, "agent")) == false, "uppercase secret rejection leaves no output")
+}
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -897,6 +919,7 @@ test_context_boundaries()
 test_validation_file_boundaries()
 test_config_section_types()
 test_second_pass_boundaries()
+test_final_pass_secret_case()
 teardown()
 
 print("")
