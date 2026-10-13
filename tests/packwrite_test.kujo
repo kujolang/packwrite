@@ -169,6 +169,21 @@ func test_prompt() {
     check(absolutize("/abs/x", WORK) == "/abs/x", "absolutize keeps absolute")
 }
 
+func test_directory_creation_failure() {
+    root := join_path(WORK, "directory-failure")
+    create_dir(root)
+    cfg := config_defaults()
+    valid := pack_parse(make_manifest())["files"]
+    check(is_ok(pack_apply(valid, cfg, root, false)), "directory failure fixture creates a valid pack")
+    original := read_file(join_path(root, "agent/MASTER.md"))
+    impossible := push(valid, {"path": "agent/" + repeat("x", 256) + "/note.md", "content": "notes"})
+    dcf_result := pack_apply(impossible, cfg, root, false)
+    check(is_ok(dcf_result) == false && has_substr(err_msg(dcf_result), "Could not create directory for staged pack file:"), "directory creation failure returns an actionable envelope")
+    check(read_file(join_path(root, "agent/MASTER.md")) == original, "directory failure preserves the existing pack")
+    check(len(list_dir(root)) == 1, "directory failure removes its partially written stage")
+    check(is_ok(pack_apply(valid, cfg, root, false)), "valid retry succeeds after directory failure")
+}
+
 func test_legacy_context_render() {
     summary := {"root": "legacy", "readme": "", "languages": [], "suggested_checks": [], "top_level": [], "subtrees": [], "agent_dir": "absent", "mega_prompt": "present"}
     legacy := {"summary": summary, "warnings": []}
@@ -906,6 +921,7 @@ setup()
 test_config()
 test_config_validation()
 test_prompt()
+test_directory_creation_failure()
 test_legacy_context_render()
 test_repo_context()
 test_ai_adapter()

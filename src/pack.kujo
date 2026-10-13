@@ -415,7 +415,9 @@ export func pack_apply(files, cfg, cwd, dry_run) {
     # 2. Stage all writes in a temporary directory and validate before promoting.
     out_root := join_path(cwd, cfg["output_dir"])
     output_parent := parent_of(out_root)
-    ensure_dir(output_parent)
+    if prepare_directory(output_parent) == false {
+        return err("Could not create output parent directory for " + cfg["output_dir"])
+    }
     location_ready := pack_validate_output_location(cfg, cwd)
     if truthy(location_ready["ok"]) == false {
         return location_ready
@@ -425,7 +427,10 @@ export func pack_apply(files, cfg, cwd, dry_run) {
     if stage_root == "" {
         return err("Could not reserve a staging directory for " + cfg["output_dir"])
     }
-    ensure_dir(stage_root)
+    if prepare_directory(stage_root) == false {
+        remove_tree(stage_root)
+        return err("Could not create staging directory for " + cfg["output_dir"])
+    }
 
     mut wi := 0
     wn := len(plans)
@@ -433,8 +438,9 @@ export func pack_apply(files, cfg, cwd, dry_run) {
         pl := plans[wi]
         staged_target := join_path(stage_root, pl["rel"])
         parent := parent_of(staged_target)
-        if parent != "" {
-            ensure_dir(parent)
+        if parent != "" && prepare_directory(parent) == false {
+            remove_tree(stage_root)
+            return err("Could not create directory for staged pack file: " + pl["rel"])
         }
         wrote := write_file_atomic(staged_target, pl["content"], true)
         if wrote == false {
@@ -464,6 +470,17 @@ export func pack_apply(files, cfg, cwd, dry_run) {
     }
 
     return {"ok": true, "written": len(paths), "phases": phases, "paths": paths, "pruned": pruned, "cleaned": cleaned}
+}
+
+# Convert directory creation failures into the pack writer's error contract.
+# Keep cleanup at the call site, where the owned staging root is known.
+func prepare_directory(path) {
+    try {
+        ensure_dir(path)
+        return path_is_dir(path)
+    } except directory_error {
+        return false
+    }
 }
 
 # Count files under `out_root` whose absolute path is not a manifest target.

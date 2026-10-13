@@ -124,12 +124,12 @@ summary_out="$(KUJO="$KUJO" "$BIN" summary)"
 if echo "$summary_out" | grep -q "PackWrite pack summary"; then ok; else bad "summary human output missing heading"; fi
 
 # --- prompt commands ---
-if KUJO="$KUJO" "$BIN" prompt deepseek | grep -q "autonomous"; then ok; else bad "prompt deepseek missing content"; fi
-if KUJO="$KUJO" "$BIN" prompt codex-review | grep -q "repair checklist"; then ok; else bad "prompt codex-review missing content"; fi
+if prompt_out="$(KUJO="$KUJO" "$BIN" prompt deepseek)" && [[ "$prompt_out" == *"autonomous"* ]]; then ok; else bad "prompt deepseek missing content"; fi
+if prompt_out="$(KUJO="$KUJO" "$BIN" prompt codex-review)" && [[ "$prompt_out" == *"repair checklist"* ]]; then ok; else bad "prompt codex-review missing content"; fi
 
 # --- prompt fallback when file absent ---
 rm -rf "$TMP/agent"
-if KUJO="$KUJO" "$BIN" prompt deepseek | grep -q "autonomous"; then ok; else bad "prompt deepseek fallback missing"; fi
+if prompt_out="$(KUJO="$KUJO" "$BIN" prompt deepseek)" && [[ "$prompt_out" == *"autonomous"* ]]; then ok; else bad "prompt deepseek fallback missing"; fi
 
 # --- missing prompt error ---
 rm -f "$TMP/MEGA_PROMPT.md"
