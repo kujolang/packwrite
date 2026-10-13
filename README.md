@@ -73,7 +73,7 @@ Current hardening includes:
 - Model manifest paths are validated before dry-runs or writes claim success.
 - Secret-looking generated paths are rejected, not merely warned about after writing.
 - Writes are staged and validated before promotion, with rollback on failed promotion.
-- The full test suite is offline: 248 unit assertions and 88 CLI integration assertions.
+- The full test suite is offline: 248 unit assertions and 92 CLI integration assertions.
 
 ## Install
 
@@ -88,6 +88,10 @@ interpreter. Install Kujo so the `kujo` command is available on your `PATH`:
 make install                      # symlinks bin/packwrite into /usr/local/bin
 packwrite --help
 ```
+
+The destination `PREFIX/bin` must already exist and be writable. Set `PREFIX` to
+choose a different install root, for example `make install PREFIX="$HOME/.local"`.
+Installation returns a nonzero status if the symlink cannot be created.
 
 The launcher preserves your working directory, so config discovery and the generated
 `/agent` pack land where you invoke it.
@@ -358,7 +362,7 @@ make check      # lint only
 make help       # list tasks
 ```
 
-The suite (248 unit + 88 CLI integration assertions) is **fully offline** — AI calls go
+The suite (248 unit + 92 CLI integration assertions) is **fully offline** — AI calls go
 through a fake-injection seam (`PACKWRITE_FAKE_RESPONSE_FILE`), so no API key or network
 is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the Kujo runtime
 conventions.
