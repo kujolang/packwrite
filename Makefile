@@ -45,7 +45,7 @@ smoke: ## Quick sanity check: print help and version
 
 .PHONY: install
 install: ## Symlink bin/packwrite into PREFIX/bin (default /usr/local/bin)
-	@PREFIX=$${PREFIX:-/usr/local}; \
+	@set -e; PREFIX=$${PREFIX:-/usr/local}; \
 	ln -sf "$(CURDIR)/bin/packwrite" "$$PREFIX/bin/packwrite"; \
 	echo "linked $$PREFIX/bin/packwrite -> $(CURDIR)/bin/packwrite"; \
 	echo "remember to export KUJO=/path/to/kujo in your shell profile"

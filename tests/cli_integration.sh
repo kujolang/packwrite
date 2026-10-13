@@ -361,5 +361,17 @@ for numeric_case in temperature:nan timeout:nan timeout:inf; do
   if [ "$code" -eq 1 ] && [[ "$out" == 'error: Invalid configuration:'* ]] && [[ "$out" != *'Runtime Error'* ]]; then ok; else bad "non-finite config crashed or succeeded: $out"; fi
 done
 
+# Installation must fail honestly and preserve the supported symlink launcher.
+set +e
+out="$(make -s -C "$PROJECT_DIR" install PREFIX="$TMP/missing-prefix" 2>&1)"
+code=$?
+set -e
+if [ "$code" -ne 0 ]; then ok; else bad "install succeeded without a destination bin directory"; fi
+if [[ "$out" != *'linked '* ]] && [[ "$out" != *'remember to export'* ]]; then ok; else bad "failed install printed success guidance"; fi
+mkdir -p "$TMP/install prefix/bin"
+if make -s -C "$PROJECT_DIR" install PREFIX="$TMP/install prefix" >/dev/null && [ "$(readlink "$TMP/install prefix/bin/packwrite")" = "$BIN" ]; then ok; else bad "install did not create the expected launcher symlink"; fi
+out="$(KUJO="$KUJO" "$TMP/install prefix/bin/packwrite" version)"
+if [ "$out" = "$(KUJO="$KUJO" "$BIN" version)" ]; then ok; else bad "installed launcher changed version output"; fi
+
 echo "cli integration: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
