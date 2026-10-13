@@ -114,6 +114,12 @@ The model tried to generate a file path that looks like a secret (`.env`, key ma
 or names containing `secret`/`token`). PackWrite rejects it before dry-run or write
 success is reported.
 
+**`Could not read existing pack directory: …` / `Could not read output parent directory: …`**
+The writer cannot enumerate files needed for overwrite accounting or stale-workdir
+cleanup. Restore read/search permissions and retry. The command returns exit 1;
+when overwrite accounting fails, the owned stage is removed and the old pack is
+preserved.
+
 ## Validation
 
 `packwrite validate` (and the validation step of `init`) reports **errors** (the pack is
