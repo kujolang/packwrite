@@ -9,7 +9,7 @@
 #   1  operational failure (missing prompt, AI failure, validation failure)
 #   2  usage error (bad/missing arguments)
 
-from src.util import truthy, is_text, write_private_file_atomic, has_line_control, list_includes
+from src.util import truthy, is_text, write_private_file_atomic, has_line_control, list_includes, read_text, symlink_path
 from src.errors import is_ok, err_msg
 from src.config import config_load, config_defaults
 from src.prompt import prompt_resolve, prompt_read
@@ -142,7 +142,12 @@ func cmd_init(tokens, inject) {
     if quiet == false {
         print_step(5, 8, "Requesting model output from " + cfg["model_provider"] + "/" + cfg["model_model"])
     }
-    gen := ai_generate(dprompt, cfg, resolve_inject(inject))
+    injected := resolve_inject(inject)
+    if is_ok(injected) == false {
+        print_error(err_msg(injected))
+        return 1
+    }
+    gen := ai_generate(dprompt, cfg, injected["options"])
     if is_ok(gen) == false {
         print_error(err_msg(gen))
         return 1
@@ -418,8 +423,17 @@ func cmd_prompt(tokens) {
 }
 
 func emit_prompt(path, fallback) {
-    if file_exists(path) && path_is_dir(path) == false {
-        print(read_file(path))
+    if symlink_path(path) {
+        print_error("refusing to read a symlinked pack prompt: " + path)
+        return 1
+    }
+    if file_exists(path) {
+        loaded_prompt := read_text(path)
+        if is_ok(loaded_prompt) == false {
+            print_error(err_msg(loaded_prompt))
+            return 1
+        }
+        print(loaded_prompt["text"])
         return 0
     }
     print("note: " + path + " not found; printing a default prompt.")
@@ -555,20 +569,25 @@ func cmd_doctor(tokens) {
 
 # Resolve the fake-AI injection. Prefer an explicit dict (dispatch test seam),
 # else read the PACKWRITE_FAKE_RESPONSE_FILE / PACKWRITE_FAKE_RESPONSE env vars
-# (used by the CLI integration tests). Returns a dict or null.
+# (used by the CLI integration tests). Explicit fixture failures must never
+# fall through to a live provider. Returns an envelope with options or an error.
 func resolve_inject(inject) {
     if type(inject) == "dict" {
-        return inject
+        return {"ok": true, "options": inject}
     }
     fpath := env_or("PACKWRITE_FAKE_RESPONSE_FILE", "")
-    if fpath != "" && file_exists(fpath) {
-        return {"fake": read_file(fpath)}
+    if fpath != "" {
+        fake_read := read_text(fpath)
+        if is_ok(fake_read) == false {
+            return {"ok": false, "error": "Could not read fake response file: " + err_msg(fake_read)}
+        }
+        return {"ok": true, "options": {"fake": fake_read["text"]}}
     }
     raw := env_or("PACKWRITE_FAKE_RESPONSE", "")
     if raw != "" {
-        return {"fake": raw}
+        return {"ok": true, "options": {"fake": raw}}
     }
-    return null
+    return {"ok": true, "options": null}
 }
 
 func flag_bool(parsed, name) {

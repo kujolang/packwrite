@@ -167,7 +167,7 @@ func write_file_atomic_mode(path, content, overwrite, mode) {
     }
 }
 
-func symlink_path(path) {
+export func symlink_path(path) {
     mut linked := false
     try {
         linked = path_is_symlink(path)

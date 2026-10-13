@@ -142,6 +142,7 @@ export func ai_generate(prompt, cfg, opts) {
         if type(opts["fake"]) == "string" {
             return {"ok": true, "text": opts["fake"], "provider": "fake", "model": "fake"}
         }
+        return err("Invalid fake response: expected a string; refusing a live provider call.")
     }
 
     endpoint := resolve_endpoint(cfg)

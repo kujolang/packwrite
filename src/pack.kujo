@@ -202,6 +202,20 @@ export func pack_validate_manifest(files, cfg, cwd) {
         vm_i = vm_i + 1
     }
 
+    # A file cannot also be an ancestor directory, regardless of entry order.
+    # Reject conflicts before dry-run success or staging any content.
+    mut ac_i := 0
+    while ac_i < len(files) {
+        mut ancestor := parent_of(files[ac_i]["path"])
+        while ancestor != "" && ancestor != cfg["output_dir"] {
+            if has_key(seen_paths, ancestor) == 1 {
+                return err("Manifest validation failed: file path is also a parent directory: " + ancestor)
+            }
+            ancestor = parent_of(ancestor)
+        }
+        ac_i = ac_i + 1
+    }
+
     req := required_files(cfg)
     out_dir := cfg["output_dir"]
     mut rq_i := 0
@@ -333,6 +347,9 @@ export func pack_validate_output_location(cfg, cwd) {
         cur = join_path(cur, parts[ol_i])
         if is_symlink_path(cur) {
             return err("Unsafe output dir: symlink component is not allowed: " + parts[ol_i])
+        }
+        if ol_i < ol_n - 1 && path_exists(cur) && path_is_dir(cur) == false {
+            return err("Unsafe output dir: parent component is not a directory: " + parts[ol_i])
         }
         ol_i = ol_i + 1
     }

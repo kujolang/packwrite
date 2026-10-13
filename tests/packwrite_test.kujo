@@ -842,6 +842,30 @@ func test_config_section_types() {
     check(is_ok(config_read_toml(path)), "unknown config extension tables remain compatible")
 }
 
+func test_second_pass_boundaries() {
+    root := join_path(WORK, "manifest-conflicts")
+    create_dir(root)
+    cfg := config_defaults()
+    parsed := pack_parse(make_manifest())
+    conflicts := push(push(parsed["files"], {"path": "agent/extra", "content": "file"}), {"path": "agent/extra/child.md", "content": "child"})
+    dry := pack_apply(conflicts, cfg, root, true)
+    check(is_ok(dry) == false, "dry run rejects file-directory manifest conflict")
+    check(has_substr(err_msg(dry), "parent directory"), "manifest conflict error identifies the reason")
+    check(is_ok(pack_apply(conflicts, cfg, root, false)) == false, "real write rejects manifest conflict")
+    check(len(list_dir(root)) == 0, "manifest conflict creates no staging or output artifacts")
+    reversed := push(push(parsed["files"], {"path": "agent/extra/child.md", "content": "child"}), {"path": "agent/extra", "content": "file"})
+    check(is_ok(pack_validate_manifest(reversed, cfg, root)) == false, "manifest ancestor conflict is independent of order")
+    write_file(join_path(root, "build"), "preserve")
+    cfg["output_dir"] := "build/agent"
+    check(is_ok(pack_validate_output_location(cfg, root)) == false, "file output ancestor rejected before stage creation")
+    check(read_file(join_path(root, "build")) == "preserve", "file output ancestor preserved")
+    fake_cfg := config_defaults()
+    fake_cfg["model_provider"] := "unsupported-audit-provider"
+    invalid_fake := ai_generate("unused", fake_cfg, {"fake": null})
+    check(is_ok(invalid_fake) == false, "invalid explicit fake returns an error")
+    check(has_substr(err_msg(invalid_fake), "Invalid fake response"), "invalid fake never reaches provider resolution")
+}
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -872,6 +896,7 @@ test_recovery_backup_retained()
 test_context_boundaries()
 test_validation_file_boundaries()
 test_config_section_types()
+test_second_pass_boundaries()
 teardown()
 
 print("")

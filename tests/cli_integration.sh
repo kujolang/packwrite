@@ -256,5 +256,50 @@ else
   ok
 fi
 
+# An explicit offline fixture must fail closed, even when an inline fake exists.
+for fixture_kind in missing directory invalid-utf8; do
+  fixture_path="$TMP/fixture-$fixture_kind"
+  case "$fixture_kind" in
+    directory) mkdir "$fixture_path" ;;
+    invalid-utf8) printf '\377' > "$fixture_path" ;;
+  esac
+  set +e
+  out="$(PACKWRITE_FAKE_RESPONSE_FILE="$fixture_path" PACKWRITE_FAKE_RESPONSE='{}' KUJO="$KUJO" "$BIN" init MEGA_PROMPT.md --overwrite --quiet --provider unsupported-audit-provider 2>&1)"
+  code=$?
+  set -e
+  if [ "$code" -eq 1 ] && [[ "$out" == error:*'Could not read fake response file:'* ]]; then
+    ok
+  else
+    bad "invalid offline fixture $fixture_kind fell through or crashed: $out"
+  fi
+done
+
+# Saved prompt failures are operational errors; absent prompts retain their fallback.
+mkdir "$TMP/prompt-boundaries"
+mkdir "$TMP/prompt-boundaries/agent"
+printf '\377' > "$TMP/prompt-boundaries/agent/DEEPSEEK_START.md"
+set +e
+out="$(cd "$TMP/prompt-boundaries" && KUJO="$KUJO" "$BIN" prompt deepseek 2>&1)"
+code=$?
+set -e
+if [ "$code" -eq 1 ] && [[ "$out" == error:* ]]; then ok; else bad "unreadable prompt crashed or succeeded"; fi
+rm "$TMP/prompt-boundaries/agent/DEEPSEEK_START.md"
+ln -s "$TMP/absent-prompt" "$TMP/prompt-boundaries/agent/DEEPSEEK_START.md"
+set +e
+out="$(cd "$TMP/prompt-boundaries" && KUJO="$KUJO" "$BIN" prompt deepseek 2>&1)"
+code=$?
+set -e
+if [ "$code" -eq 1 ] && [[ "$out" == *'symlinked pack prompt'* ]]; then ok; else bad "dangling prompt symlink fell back"; fi
+rm "$TMP/prompt-boundaries/agent/DEEPSEEK_START.md"
+mkdir "$TMP/prompt-boundaries/agent/DEEPSEEK_START.md"
+set +e
+out="$(cd "$TMP/prompt-boundaries" && KUJO="$KUJO" "$BIN" prompt deepseek 2>&1)"
+code=$?
+set -e
+if [ "$code" -eq 1 ] && [[ "$out" == error:* ]]; then ok; else bad "prompt directory fell back"; fi
+rmdir "$TMP/prompt-boundaries/agent/DEEPSEEK_START.md"
+out="$(cd "$TMP/prompt-boundaries" && KUJO="$KUJO" "$BIN" prompt deepseek 2>&1)"
+if [[ "$out" == note:*'printing a default prompt.'* ]]; then ok; else bad "missing prompt fallback changed"; fi
+
 echo "cli integration: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
