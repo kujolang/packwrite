@@ -149,6 +149,27 @@ func test_config_validation() {
     delete_file(p)
 }
 
+func test_nonfinite_config() {
+    nf_path := join_path(WORK, "nonfinite.toml")
+    nf_fields := ["temperature", "timeout"]
+    nf_values := ["nan", "inf", "-inf"]
+    mut nf_fi := 0
+    while nf_fi < len(nf_fields) {
+        mut nf_vi := 0
+        while nf_vi < len(nf_values) {
+            write_file(nf_path, "[model]\n" + nf_fields[nf_fi] + " = " + nf_values[nf_vi] + "\n")
+            nf_result := config_resolve({"config": nf_path}, WORK, "")
+            check(is_ok(nf_result) == false && has_substr(err_msg(nf_result), nf_fields[nf_fi]), "non-finite " + nf_fields[nf_fi] + " " + nf_values[nf_vi] + " fails config validation")
+            delete_file(nf_path)
+            nf_vi = nf_vi + 1
+        }
+        nf_fi = nf_fi + 1
+    }
+    write_file(nf_path, "[model]\ntemperature = 0.0\ntimeout = 1e300\n")
+    check(is_ok(config_resolve({"config": nf_path}, WORK, "")), "finite timeout magnitude and zero temperature remain supported")
+    delete_file(nf_path)
+}
+
 func config_read_toml_setup() {
     p := join_path(WORK, "bad.toml")
     write_file(p, "this is = = not valid [toml\n")
@@ -948,6 +969,7 @@ func test_final_pass_secret_case() {
 setup()
 test_config()
 test_config_validation()
+test_nonfinite_config()
 test_prompt()
 test_phase_count_output_path()
 test_directory_creation_failure()

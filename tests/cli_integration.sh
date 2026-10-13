@@ -349,5 +349,17 @@ printf '# Valid prompt\n' > "$TMP/doctor-prompt/MEGA_PROMPT.md"
 out="$(cd "$TMP/doctor-prompt" && PACKWRITE_API_KEY=offline-test-placeholder KUJO="$KUJO" "$BIN" doctor --strict --json)"
 if [[ "$out" == *'"prompt_status":"found"'* ]] && [[ "$out" == *'"ok":true'* ]]; then ok; else bad "doctor rejected a valid prompt"; fi
 
+# Non-finite TOML numbers must fail before resolved configuration reaches JSON.
+for numeric_case in temperature:nan timeout:nan timeout:inf; do
+  numeric_field="${numeric_case%%:*}"
+  numeric_value="${numeric_case#*:}"
+  printf '[model]\n%s = %s\n' "$numeric_field" "$numeric_value" > "$TMP/nonfinite.toml"
+  set +e
+  out="$(KUJO="$KUJO" "$BIN" config --config "$TMP/nonfinite.toml" 2>&1)"
+  code=$?
+  set -e
+  if [ "$code" -eq 1 ] && [[ "$out" == 'error: Invalid configuration:'* ]] && [[ "$out" != *'Runtime Error'* ]]; then ok; else bad "non-finite config crashed or succeeded: $out"; fi
+done
+
 echo "cli integration: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

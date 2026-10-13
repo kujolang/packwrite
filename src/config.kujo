@@ -82,10 +82,10 @@ export func config_validate(cfg) {
     if type(cfg["model_endpoint"]) != "string" {
         return err("Invalid configuration: [model].endpoint must be a string")
     }
-    if is_number(cfg["model_temperature"]) == false || cfg["model_temperature"] < 0 || cfg["model_temperature"] > 2 {
+    if is_finite_number(cfg["model_temperature"]) == false || cfg["model_temperature"] < 0 || cfg["model_temperature"] > 2 {
         return err("Invalid configuration: [model].temperature must be a number between 0.0 and 2.0")
     }
-    if is_number(cfg["model_timeout"]) == false || cfg["model_timeout"] <= 0 {
+    if is_finite_number(cfg["model_timeout"]) == false || cfg["model_timeout"] <= 0 {
         return err("Invalid configuration: [model].timeout must be a positive number of seconds")
     }
     if is_string_array(cfg["repo_include"]) == false || is_string_array(cfg["repo_exclude"]) == false {
@@ -106,8 +106,16 @@ export func config_validate(cfg) {
     return {"ok": true}
 }
 
-func is_number(value) {
-    return type(value) == "int" || type(value) == "float"
+func is_finite_number(value) {
+    if type(value) == "int" {
+        return true
+    }
+    if type(value) != "float" {
+        return false
+    }
+    # Only finite floats subtract from themselves to zero; NaN and infinities
+    # produce NaN. This avoids a magnitude limit on otherwise valid timeouts.
+    return value - value == 0
 }
 
 func is_string_array(values) {
