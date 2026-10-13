@@ -114,6 +114,11 @@ unusable) and **warnings** (quality concerns). Errors fail the command; warnings
 **`Output pack directory not found: …`** — no pack at the resolved `--output` dir. Run
 `init` first, or point `--output` at the right directory.
 
+**`Could not read pack directory: …`** — a pack directory could not be enumerated.
+Check that it still exists and that your user has read/search permission. Validation
+and summary return exit 1; `--json` retains the normal error envelope. An unreadable
+`phases` directory reports a phase count of 0 alongside the validation errors.
+
 **`Missing required file: agent/X`** — a required file is absent. Note that the
 `[pack].include_*` toggles control which prompt files are required.
 
