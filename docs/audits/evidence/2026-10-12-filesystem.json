@@ -1,0 +1,73 @@
+{
+  "starting_sha": "a9a8602d8e133f824ec89fd8049b6ffdcf4001a0",
+  "runtime": "Kujo 1.5.0 / macOS arm64",
+  "before_filesystem": {
+    "exit": 4,
+    "stdout": "",
+    "stderr": "[KUJOVM001] [vm] Runtime Error: Cannot create directory '/private/tmp/packwrite-renewed-audit/repro/.agent.packwrite-stage-0/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx': File name too long (os error 63)\n  --> 0:0\n\n",
+    "stages": [
+      ".agent.packwrite-stage-0"
+    ]
+  },
+  "after_filesystem": [
+    {
+      "case": "nested",
+      "exit": 1,
+      "expected_error": true,
+      "stderr_bytes": 0,
+      "remaining_stages": []
+    },
+    {
+      "case": "parent",
+      "exit": 1,
+      "expected_error": true,
+      "stderr_bytes": 0,
+      "remaining_stages": []
+    },
+    {
+      "case": "stage",
+      "exit": 1,
+      "expected_error": true,
+      "stderr_bytes": 0,
+      "remaining_stages": []
+    }
+  ],
+  "measurements": {
+    "before": [
+      {
+        "init_seconds": 1.7957,
+        "init_output_bytes": 0,
+        "validation_json": "{\"errors\":[],\"ok\":true,\"warnings\":[]}"
+      },
+      {
+        "init_seconds": 1.7742,
+        "init_output_bytes": 0,
+        "validation_json": "{\"errors\":[],\"ok\":true,\"warnings\":[]}"
+      },
+      {
+        "init_seconds": 1.6963,
+        "init_output_bytes": 0,
+        "validation_json": "{\"errors\":[],\"ok\":true,\"warnings\":[]}"
+      }
+    ],
+    "after": [
+      {
+        "init_seconds": 1.9684,
+        "init_output_bytes": 0,
+        "validation_json": "{\"errors\":[],\"ok\":true,\"warnings\":[]}"
+      },
+      {
+        "init_seconds": 1.8595,
+        "init_output_bytes": 0,
+        "validation_json": "{\"errors\":[],\"ok\":true,\"warnings\":[]}"
+      },
+      {
+        "init_seconds": 2.4028,
+        "init_output_bytes": 0,
+        "validation_json": "{\"errors\":[],\"ok\":true,\"warnings\":[]}"
+      }
+    ],
+    "identical_pack": true,
+    "file_count": 13
+  }
+}

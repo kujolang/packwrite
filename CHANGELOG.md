@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Return operational errors and remove partial staging output when directory creation fails.
+- Avoid early-closing prompt test pipes that can cause false broken-pipe failures.
+- Clarify that omitted repository include lists use defaults; an empty list includes all eligible names.
+
 - Preserve rendering of legacy repository context summaries without omission metadata.
 
 - Match built-in secret filenames regardless of case across context collection,

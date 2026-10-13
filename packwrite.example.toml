@@ -20,8 +20,9 @@ timeout = 120
 
 # `include` is a top-level allow-list: when non-empty, only these top-level names
 # (files and directories) are shown to the model; included directories are then
-# summarized one level deep. Leave it empty/omit it to include everything that is
-# not excluded. `exclude` and secret-looking paths always win.
+# summarized one level deep. Set include = [] to include everything that is not
+# excluded; omitting include uses the default allow-list. `exclude` and
+# secret-looking paths always win.
 [repo_context]
 include = [
   "README.md",
