@@ -56,7 +56,7 @@ features and currently do nothing).
 
 | Key | Type | Default | Flag | Status | Effect |
 | --- | --- | --- | --- | --- | --- |
-| `include` | string[] | see below | — | active | Top-level allow-list. When non-empty, only these top-level names are shown to the model (included directories are summarized one level deep). Empty/omitted = include everything not excluded. |
+| `include` | string[] | see below | — | active | Top-level allow-list. When non-empty, only these top-level names are shown to the model (included directories are summarized one level deep). Empty = include everything not excluded; omitted uses the default allow-list. |
 | `exclude` | string[] | see below | — | active | Names always skipped (in addition to secret-looking paths). |
 
 Default `include`:
@@ -72,6 +72,13 @@ Default `exclude`:
 Regardless of these lists, PackWrite **always** skips secret-looking paths (`.env*`,
 `*.pem`, `*.key`, `id_rsa`, `id_ed25519`, names containing `secret`/`token`, etc.) and
 never sends file contents beyond a single README summary line. See [SECURITY](../SECURITY.md).
+
+Context lists use lexical ordering and include at most 100 top-level entries and
+100 children for each of at most 12 directories. Omitted entries are counted in the
+model-visible summary. Skip warnings are capped at 20 with an explicit notice.
+Symlink entries are excluded. The README excerpt and detected stack also honor
+include/exclude rules; a README over 64 KiB is omitted with a notice before reading.
+These are summary budgets, not limits on files the generated pack may describe.
 
 ### `[pack]`
 
@@ -127,3 +134,6 @@ packwrite init MEGA_PROMPT.md --model gpt-5.5-mini
 # provider = openai   (from packwrite.toml)
 # model    = gpt-5.5-mini   (flag overrides packwrite.toml)
 ```
+
+Known configuration sections must be TOML tables. An explicit `--config` path that
+does not exist fails; absent default project/global configuration remains optional.

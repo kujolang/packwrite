@@ -32,7 +32,7 @@ tests/
 ## Conventions / gotchas (Kujo runtime)
 
 - One `for` loop per function scope passes `kujo check`; everything here uses `while`.
-- `write_file` overwrite flag is broken — `util.write_text` deletes then writes.
+- `write_file` overwrite flag is broken — `util.write_file_atomic` stages then renames.
 - No `import ... as`; every module exports uniquely-named functions.
 - Helper locals are uniquely named (e.g. `ls_i`/`ls_n`) so they can't clobber a caller.
   Tree walks are iterative with an explicit stack (recursion + a helper in one hot loop
@@ -57,7 +57,7 @@ tests/
 make test   # or: KUJO=/path/to/kujo ./tests/run.sh
 ```
 
-Fully offline (182 unit + 66 CLI integration assertions). AI calls go through the
+Fully offline (209 unit + 67 CLI integration assertions). AI calls go through the
 fake-injection seam — no API key or network.
 
 ## Search hygiene

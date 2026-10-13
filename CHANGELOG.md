@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Apply repository context filters to README excerpts and stack detection; skip
+  symlinks and bound sorted directory summaries with explicit omission counts.
+- Reject directories, empty/unreadable required files, symlinks, and nested
+  secret-looking paths during pack validation. Check every TODO phase reference
+  without silently dropping references after 1,000 or stripping subdirectories.
+- Reject malformed configuration sections and missing explicit configuration files;
+  return error envelopes for unreadable prompt/config files.
+- Check every Bash script in the syntax gate and isolate unit test workspaces with
+  `mktemp` and argument-vector subprocess calls.
+
 ## [1.1.0] - 2026-08-30
 
 ### CI

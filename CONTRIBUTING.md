@@ -125,8 +125,8 @@ PackWrite-specific runtime notes:
 
 - `kujo check` rejects more than one `for` loop per function scope. Use
   index-based `while` loops.
-- `write_file` overwrite behavior is unreliable. Use `util.write_text`, which
-  deletes then writes.
+- `write_file` overwrite behavior is unreliable. Use `util.write_file_atomic`, which
+  stages a sibling temporary file and renames it into place.
 - `import ... as alias` is unsupported. Export uniquely named functions.
 - `len` and `index_of` are byte-based; `substring` is char-based. Do not mix
   them. Use `str_find`, `str_find_from`, and `str_rfind` in `src/util.kujo`.

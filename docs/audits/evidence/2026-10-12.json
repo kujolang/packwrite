@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-12",
+  "repository": "kujolang/packwrite",
+  "branch": "main",
+  "starting_sha": "3f0cbf4b5052677d22040cdf486adf2817b40a20",
+  "implementation_sha": "b520d2d94e69e97b53de51450c603ff7a85128c0",
+  "runtime": "kujo 1.5.0",
+  "host": {
+    "system": "Darwin",
+    "machine": "x86_64"
+  },
+  "context": {
+    "before": {
+      "seconds": [
+        6.5648120359983295,
+        6.913191867992282,
+        6.540684434992727
+      ],
+      "median_seconds": 6.5648120359983295,
+      "output": {
+        "context_bytes": 36298,
+        "context_lines": 2014,
+        "context_warnings": 0,
+        "prompt_bytes": 39202,
+        "prompt_lines": 2070
+      },
+      "identical_outputs": true
+    },
+    "after": {
+      "seconds": [
+        6.19894310797099,
+        6.995194109971635,
+        6.125900714949239
+      ],
+      "median_seconds": 6.19894310797099,
+      "output": {
+        "context_bytes": 2226,
+        "context_lines": 117,
+        "context_warnings": 0,
+        "prompt_bytes": 5130,
+        "prompt_lines": 173
+      },
+      "identical_outputs": true
+    }
+  },
+  "ordinary_cli": {
+    "before": {
+      "init": {
+        "seconds": [
+          0.5351113039650954,
+          0.6447414510184899,
+          0.6133850729675032
+        ],
+        "median_seconds": 0.6133850729675032,
+        "output_bytes": 0,
+        "stable_output": true
+      },
+      "validate": {
+        "seconds": [
+          0.15733066096436232,
+          0.16115648398408666,
+          0.15780304098734632
+        ],
+        "median_seconds": 0.15780304098734632,
+        "output_bytes": 38,
+        "stable_output": true
+      }
+    },
+    "after": {
+      "init": {
+        "seconds": [
+          0.6186473270063289,
+          0.6304107499890961,
+          0.5987957559991628
+        ],
+        "median_seconds": 0.6186473270063289,
+        "output_bytes": 0,
+        "stable_output": true
+      },
+      "validate": {
+        "seconds": [
+          0.16359135700622573,
+          0.1636608870467171,
+          0.16845611401367933
+        ],
+        "median_seconds": 0.1636608870467171,
+        "output_bytes": 38,
+        "stable_output": true
+      }
+    },
+    "byte_identical_generated_pack": true
+  },
+  "baseline_probes": {
+    "unicode": {
+      "exit": 0,
+      "output": ""
+    },
+    "ordinary": {
+      "exit": 0,
+      "output": ""
+    },
+    "required_directory": {
+      "exit": 0,
+      "output": "{\"errors\":[],\"ok\":true,\"warnings\":[]}\n"
+    },
+    "shell_gate": {
+      "exit": 0,
+      "output": "bash syntax: all files passed\n"
+    }
+  },
+  "baseline_test": {
+    "unit": 182,
+    "cli": 66,
+    "real_seconds": 22.08
+  },
+  "final_test": {
+    "unit": 209,
+    "cli": 67
+  },
+  "concurrent_units": {
+    "runs": 2,
+    "passed_each": 209,
+    "shared_TMPDIR_with_spaces": true,
+    "leftover_workspaces": 0
+  }
+}

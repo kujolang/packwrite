@@ -87,10 +87,10 @@ future implementation still requires normal compatibility and regression review.
 ## Notes for whoever picks this up
 
 - Run `make test KUJO=kujo` before and after — keep the
-  suite green (currently 182 unit + 66 CLI integration assertions, fully offline).
+  suite green (currently 209 unit + 67 CLI integration assertions, fully offline).
 - Preserve exact CLI help text: `tests/cli_integration.sh` treats it as a contract.
 - Honor the Kujo runtime gotchas in `AGENTS.md`/`CONTRIBUTING.md` (one `for` per scope,
-  `write_text` delete-then-write, uniquely-named helper locals, char-safe string
+  `write_file_atomic` staged rename, uniquely-named helper locals, char-safe string
   helpers, guarded `parse_json`/`parse_toml`).
 - Keep the rule that only `src/command.kujo` prints and chooses exit codes; everything else
   returns `{"ok":…}` envelopes.

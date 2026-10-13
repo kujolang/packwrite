@@ -30,7 +30,7 @@ the model only fills in *content*.
 | `src/ai.kujo` | The model boundary: adapter over `ai_chat`, endpoint/key resolution, distillation-prompt builder. | `ai_generate`, `ai_distillation_prompt`, `resolve_endpoint` |
 | `src/pack.kujo` | Manifest/resource limits, config/path/symlink safety, overwrite/prune, staged write/dry-run. | `pack_parse`, `pack_apply`, `pack_guard_overwrite`, `pack_validate_config`, `safe_target` |
 | `src/validate.kujo` | Deterministic pack validation and read-only summaries (no AI). | `validate_run`, `summary_run`, `required_files` |
-| `src/util.kujo` | Predicates, char-safe string helpers, safe fs read/write. | `truthy`, `str_find`, `write_text`, … |
+| `src/util.kujo` | Predicates, char-safe string helpers, safe fs read/write. | `truthy`, `str_find`, `write_file_atomic`, … |
 | `src/errors.kujo` | Result envelopes and canonical user-facing messages. | `ok`, `err`, `is_ok`, `msg_*` |
 
 ## Data flow: `packwrite init`
