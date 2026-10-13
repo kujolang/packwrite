@@ -361,6 +361,30 @@ for numeric_case in temperature:nan timeout:nan timeout:inf; do
   if [ "$code" -eq 1 ] && [[ "$out" == 'error: Invalid configuration:'* ]] && [[ "$out" != *'Runtime Error'* ]]; then ok; else bad "non-finite config crashed or succeeded: $out"; fi
 done
 
+# Permission failures must remain structured validation failures, not VM crashes.
+# Root bypasses Unix mode bits, so these cases require an ordinary user.
+if [ "$(id -u)" -ne 0 ]; then
+  for denied_kind in root phases extra; do
+    cp -R "$PROJECT_DIR/tests/fixtures/golden-agent" "$TMP/denied-pack"
+    denied_path="$TMP/denied-pack"
+    if [ "$denied_kind" != root ]; then denied_path="$denied_path/$denied_kind"; fi
+    mkdir -p "$denied_path"
+    chmod 000 "$denied_path"
+    for denied_command in validate summary; do
+      set +e
+      out="$(KUJO="$KUJO" "$BIN" "$denied_command" --output denied-pack --json 2>"$TMP/denied-stderr")"
+      code=$?
+      set -e
+      if [ "$code" -eq 1 ] && [[ "$out" == \{*\} ]] && [[ "$out" == *'"ok":false'* ]] && [[ "$out" == *'Could not read pack directory:'* ]] && [ ! -s "$TMP/denied-stderr" ]; then ok; else bad "$denied_command crashed or accepted unreadable $denied_kind directory: $out"; fi
+    done
+    chmod 700 "$denied_path"
+    if KUJO="$KUJO" "$BIN" validate --output denied-pack --json >/dev/null; then ok; else bad "restoring $denied_kind permissions did not restore valid pack"; fi
+    rm -rf "$TMP/denied-pack"
+  done
+else
+  echo "  SKIP: 9 directory-permission assertions require a non-root user"
+fi
+
 # Installation must fail honestly and preserve the supported symlink launcher.
 set +e
 out="$(make -s -C "$PROJECT_DIR" install PREFIX="$TMP/missing-prefix" 2>&1)"
