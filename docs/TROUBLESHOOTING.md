@@ -168,8 +168,10 @@ range, and phase bounds must be positive integers with `min_phases <= max_phases
 
 **`doctor: <n> blocking issue(s) found (strict mode):`** (exit 1) — `packwrite doctor
 --strict` exits non-zero when a blocker would stop `init`: no resolvable endpoint, no
-API key in the environment, or a missing mega prompt file. Plain `packwrite doctor`
-always exits `0` and is purely informational; use `--strict` in CI gates.
+API key in the environment, or a missing, empty, unreadable, or non-file mega prompt.
+JSON output uses `prompt_status: "invalid"` for a present but unusable prompt.
+Plain `packwrite doctor` reports these blockers with exit `0`; use `--strict` in CI
+gates. Configuration and unsafe-output errors remain operational failures.
 
 ## Still stuck?
 

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Count phase files relative to the configured output directory, excluding unrelated ancestor and auxiliary directories named `phases`.
+- Make doctor report empty, non-file, and unreadable mega prompts as blockers; strict mode now rejects them.
+
 - Return operational errors and remove partial staging output when directory creation fails.
 - Avoid early-closing prompt test pipes that can cause false broken-pipe failures.
 - Clarify that omitted repository include lists use defaults; an empty list includes all eligible names.
