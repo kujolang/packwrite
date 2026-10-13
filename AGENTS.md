@@ -57,7 +57,7 @@ tests/
 make test   # or: KUJO=/path/to/kujo ./tests/run.sh
 ```
 
-Fully offline (229 unit + 78 CLI integration assertions). AI calls go through the
+Fully offline (232 unit + 78 CLI integration assertions). AI calls go through the
 fake-injection seam — no API key or network.
 
 ## Search hygiene

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve rendering of legacy repository context summaries without omission metadata.
+
 - Match built-in secret filenames regardless of case across context collection,
   manifest safety, and existing-pack validation; retain exact custom exclusions.
 - Report unreadable auxiliary Markdown as validation errors while preserving binary
