@@ -414,6 +414,45 @@ else
   echo "  SKIP: 7 context-permission assertions require a non-root user"
 fi
 
+# Overwrite enumeration errors preserve the old pack and clean owned staging.
+if [ "$(id -u)" -ne 0 ]; then
+  for overwrite_kind in existing-subtree output-parent; do
+    overwrite_work="$TMP/overwrite-$overwrite_kind"
+    mkdir -p "$overwrite_work"
+    printf '# Demo\n' > "$overwrite_work/MEGA_PROMPT.md"
+    overwrite_output=agent
+    if [ "$overwrite_kind" = output-parent ]; then overwrite_output=build/agent; fi
+    mkdir -p "$overwrite_work/$overwrite_output"
+    cp -R "$PROJECT_DIR/tests/fixtures/golden-agent/." "$overwrite_work/$overwrite_output/"
+    overwrite_denied="$overwrite_work/build"
+    overwrite_mode=300
+    if [ "$overwrite_kind" = existing-subtree ]; then
+      overwrite_denied="$overwrite_work/agent/extra"
+      overwrite_mode=000
+      mkdir "$overwrite_denied"
+      printf 'preserve this file\n' > "$overwrite_denied/keep.txt"
+    fi
+    cp -R "$overwrite_work/$overwrite_output" "$TMP/original-$overwrite_kind"
+    sed "s#agent/#$overwrite_output/#g" "$TMP/fake.json" > "$TMP/overwrite-response.json"
+    chmod "$overwrite_mode" "$overwrite_denied"
+    for overwrite_quiet in normal quiet; do
+      overwrite_flags=(--overwrite --output "$overwrite_output")
+      if [ "$overwrite_quiet" = quiet ]; then overwrite_flags+=(--quiet); fi
+      set +e
+      out="$(cd "$overwrite_work" && PACKWRITE_FAKE_RESPONSE_FILE="$TMP/overwrite-response.json" KUJO="$KUJO" "$BIN" init "${overwrite_flags[@]}" 2>"$TMP/overwrite-stderr")"
+      code=$?
+      set -e
+      if [ "$code" -eq 1 ] && [[ "$out" == *'error: Could not read '* ]] && [ ! -s "$TMP/overwrite-stderr" ]; then ok; else bad "overwrite $overwrite_kind/$overwrite_quiet did not fail cleanly: $out"; fi
+    done
+    chmod 700 "$overwrite_denied"
+    overwrite_parent="$(dirname "$overwrite_work/$overwrite_output")"
+    if diff -r "$TMP/original-$overwrite_kind" "$overwrite_work/$overwrite_output" >/dev/null && ! compgen -G "$overwrite_parent/.agent.packwrite-*" >/dev/null; then ok; else bad "overwrite $overwrite_kind changed old pack or leaked stage/backup"; fi
+    if (cd "$overwrite_work" && PACKWRITE_FAKE_RESPONSE_FILE="$TMP/overwrite-response.json" KUJO="$KUJO" "$BIN" init --overwrite --output "$overwrite_output" --quiet >/dev/null); then ok; else bad "overwrite $overwrite_kind did not recover after restoring permissions"; fi
+  done
+else
+  echo "  SKIP: 8 overwrite-permission assertions require a non-root user"
+fi
+
 # Installation must fail honestly and preserve the supported symlink launcher.
 set +e
 out="$(make -s -C "$PROJECT_DIR" install PREFIX="$TMP/missing-prefix" 2>&1)"

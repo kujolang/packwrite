@@ -422,7 +422,11 @@ export func pack_apply(files, cfg, cwd, dry_run) {
     if truthy(location_ready["ok"]) == false {
         return location_ready
     }
-    cleaned := cleanup_stale_workdirs(out_root)
+    cleanup_result := cleanup_stale_workdirs(out_root)
+    if truthy(cleanup_result["ok"]) == false {
+        return cleanup_result
+    }
+    cleaned := cleanup_result["count"]
     stage_root := next_stage_root(out_root)
     if stage_root == "" {
         return err("Could not reserve a staging directory for " + cfg["output_dir"])
@@ -457,7 +461,12 @@ export func pack_apply(files, cfg, cwd, dry_run) {
     }
 
     # 3. Promote staged output into place.
-    pruned := count_orphans(out_root, target_set)
+    orphan_result := count_orphans(out_root, target_set)
+    if truthy(orphan_result["ok"]) == false {
+        remove_tree(stage_root)
+        return orphan_result
+    }
+    pruned := orphan_result["count"]
     location_final := pack_validate_output_location(cfg, cwd)
     if truthy(location_final["ok"]) == false {
         remove_tree(stage_root)
@@ -486,9 +495,13 @@ func prepare_directory(path) {
 # Count files under `out_root` whose absolute path is not a manifest target.
 func count_orphans(out_root, target_set) {
     if path_is_dir(out_root) == false {
-        return 0
+        return {"ok": true, "count": 0}
     }
-    existing := collect_files(out_root)
+    existing_result := collect_files(out_root)
+    if truthy(existing_result["ok"]) == false {
+        return existing_result
+    }
+    existing := existing_result["files"]
     mut count := 0
     mut po_i := 0
     po_n := len(existing)
@@ -499,7 +512,7 @@ func count_orphans(out_root, target_set) {
         }
         po_i = po_i + 1
     }
-    return count
+    return {"ok": true, "count": count}
 }
 
 func relative_output_path(path, out_dir) {
@@ -518,11 +531,16 @@ func cleanup_stale_workdirs(out_root) {
     parent := parent_of(out_root)
     name := base_of(out_root)
     if path_is_dir(parent) == false {
-        return 0
+        return {"ok": true, "count": 0}
     }
     stage_prefix := "." + name + ".packwrite-stage-"
     backup_prefix := "." + name + ".packwrite-backup-"
-    names := list_dir(parent)
+    mut names := []
+    try {
+        names = list_dir(parent)
+    } except cleanup_error {
+        return err("Could not read output parent directory: " + parent)
+    }
     now_seconds := current_timestamp() / 1000
     mut removed := 0
     mut cw_i := 0
@@ -547,7 +565,7 @@ func cleanup_stale_workdirs(out_root) {
         }
         cw_i = cw_i + 1
     }
-    return removed
+    return {"ok": true, "count": removed}
 }
 
 func next_stage_root(out_root) {
@@ -674,7 +692,12 @@ func collect_files(root) {
         top_idx := len(stack) - 1
         dir := stack[top_idx]
         stack = slice(stack, 0, top_idx)
-        names := list_dir(dir)
+        mut names := []
+        try {
+            names = list_dir(dir)
+        } except collect_error {
+            return err("Could not read existing pack directory: " + dir)
+        }
         mut cf_i := 0
         cf_n := len(names)
         while cf_i < cf_n {
@@ -687,7 +710,7 @@ func collect_files(root) {
             cf_i = cf_i + 1
         }
     }
-    return out
+    return {"ok": true, "files": out}
 }
 
 func strip_fences(text) {
