@@ -84,6 +84,18 @@ func skip_entry(name, exclude) {
     return false
 }
 
+# Directory enumeration is an operational boundary. Never silently omit a subtree
+# on permission failure or let a runtime exception escape to the CLI.
+func read_context_directory(path) {
+    mut context_names := []
+    try {
+        context_names = list_dir(path)
+    } except context_error {
+        return {"error": "Could not read repository context directory: " + path}
+    }
+    return {"names": sort(context_names)}
+}
+
 # List up to 100 sorted children of `dir` that survive the skip rules; no entries when
 # the directory is missing. Returns {entries, omitted}; each entry has name/kind. The
 # include allow-list is NOT applied here — it only gates top-level entries.
@@ -91,7 +103,11 @@ func list_safe(dir, exclude) {
     if path_is_dir(dir) == false {
         return {"entries": [], "omitted": 0}
     }
-    names := sort(list_dir(dir))
+    subtree_listing := read_context_directory(dir)
+    if has_key(subtree_listing, "error") == 1 {
+        return subtree_listing
+    }
+    names := subtree_listing["names"]
     mut out := []
     mut omitted := 0
     mut ls_i := 0
@@ -175,7 +191,11 @@ func readme_summary(cwd, exclude, include) {
 # secret-looking name is skipped and surfaced as a warning. Returns
 # {"top":[...],"warnings":[...]}.
 func scan_top(cwd, exclude, include) {
-    names := sort(list_dir(cwd))
+    top_listing := read_context_directory(cwd)
+    if has_key(top_listing, "error") == 1 {
+        return top_listing
+    }
+    names := top_listing["names"]
     mut top := []
     mut omitted := 0
     mut warnings := []
@@ -211,7 +231,7 @@ func scan_top(cwd, exclude, include) {
 }
 
 # Build a summarized subtree for each included top-level directory (capped so the
-# prompt stays lightweight). Returns [{"name","entries":[...]}].
+# prompt stays lightweight). Returns {subtrees:[...]} or {error:...}.
 func collect_subtrees(cwd, top, exclude) {
     mut subtrees := []
     mut cs_i := 0
@@ -220,21 +240,32 @@ func collect_subtrees(cwd, top, exclude) {
         e := top[cs_i]
         if e["kind"] == "dir" && len(subtrees) < 12 {
             entries := list_safe(join_path(cwd, e["name"]), exclude)
+            if has_key(entries, "error") == 1 {
+                return entries
+            }
             subtrees = push(subtrees, {"name": e["name"], "entries": entries["entries"], "omitted": entries["omitted"]})
         }
         cs_i = cs_i + 1
     }
-    return subtrees
+    return {"subtrees": subtrees}
 }
 
 # Collect the full context summary. `cfg` supplies the include allow-list, the
-# exclude list, the prompt file, and the output dir.
+# exclude list, the prompt file, and the output dir. Returns the existing
+# {summary,warnings} shape on success, or {error} on directory read failure.
 export func context_collect(cwd, cfg) {
     exclude := cfg["repo_exclude"]
     include := cfg["repo_include"]
     scan := scan_top(cwd, exclude, include)
+    if has_key(scan, "error") == 1 {
+        return scan
+    }
     stack := detect_stack(cwd, exclude, include)
-    subtrees := collect_subtrees(cwd, scan["top"], exclude)
+    collected_subtrees := collect_subtrees(cwd, scan["top"], exclude)
+    if has_key(collected_subtrees, "error") == 1 {
+        return collected_subtrees
+    }
+    subtrees := collected_subtrees["subtrees"]
 
     out_dir := join_path(cwd, cfg["output_dir"])
     mut agent_status := "absent"

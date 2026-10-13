@@ -385,6 +385,35 @@ else
   echo "  SKIP: 9 directory-permission assertions require a non-root user"
 fi
 
+# Context collection fails before generation instead of crashing or dropping data.
+if [ "$(id -u)" -ne 0 ]; then
+  mkdir -p "$TMP/context-denied/src"
+  printf '# Demo\n' > "$TMP/context-denied/MEGA_PROMPT.md"
+  for context_kind in root src; do
+    context_path="$TMP/context-denied"
+    context_mode=100
+    if [ "$context_kind" = src ]; then context_path="$context_path/src"; context_mode=000; fi
+    chmod "$context_mode" "$context_path"
+    for context_quiet in normal quiet; do
+      context_flags=(--dry-run)
+      if [ "$context_quiet" = quiet ]; then context_flags+=(--quiet); fi
+      set +e
+      out="$(cd "$TMP/context-denied" && KUJO="$KUJO" "$BIN" init "${context_flags[@]}" 2>"$TMP/context-stderr")"
+      code=$?
+      set -e
+      if [ "$code" -eq 1 ] && [[ "$out" == *'error: Could not read repository context directory:'* ]] && [[ "$out" != *'Requesting model output'* ]] && [ ! -s "$TMP/context-stderr" ] && [ ! -e "$TMP/context-denied/agent" ]; then ok; else bad "context $context_kind/$context_quiet failure crashed or continued: $out"; fi
+    done
+    chmod 700 "$context_path"
+    if (cd "$TMP/context-denied" && KUJO="$KUJO" "$BIN" init --dry-run --quiet >/dev/null); then ok; else bad "context did not recover after restoring $context_kind permissions"; fi
+  done
+  printf '[repo_context]\nexclude = ["src"]\n' > "$TMP/context-denied/packwrite.toml"
+  chmod 000 "$TMP/context-denied/src"
+  if (cd "$TMP/context-denied" && KUJO="$KUJO" "$BIN" init --dry-run --quiet >/dev/null); then ok; else bad "excluded unreadable subtree blocked context collection"; fi
+  chmod 700 "$TMP/context-denied/src"
+else
+  echo "  SKIP: 7 context-permission assertions require a non-root user"
+fi
+
 # Installation must fail honestly and preserve the supported symlink launcher.
 set +e
 out="$(make -s -C "$PROJECT_DIR" install PREFIX="$TMP/missing-prefix" 2>&1)"

@@ -124,6 +124,10 @@ func cmd_init(tokens, inject) {
         print_step(3, 8, "Collecting repository context")
     }
     ctx := context_collect(cwd, cfg)
+    if has_key(ctx, "error") == 1 {
+        print_error(ctx["error"])
+        return 1
+    }
     if quiet == false {
         print_warnings("context", ctx["warnings"])
     }
