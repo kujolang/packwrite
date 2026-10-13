@@ -819,7 +819,7 @@ func test_validation_file_boundaries() {
     delete_file(join_path(pack_root, "nested/token.txt"))
     spawn_process(["ln", "-s", pack_root, join_path(pack_root, "nested/cycle")])
     check(truthy(validate_run(pack_root, cfg)["ok"]) == false, "nested symlink cycle fails without traversal")
-    delete_file(join_path(pack_root, "nested/cycle"))
+    spawn_process(["rm", join_path(pack_root, "nested/cycle")])
     create_dir(join_path(pack_root, "phases/not-a-phase.md"))
     check(phase_file_count(pack_root) == 6, "directories do not inflate phase count")
     todo := join_path(pack_root, "TODO.md")

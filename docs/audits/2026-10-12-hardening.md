@@ -134,7 +134,15 @@ transactions or live-provider retry guarantees.
 
 Passed: `make test` (209 unit + 67 CLI assertions), `make smoke`, shell syntax checks,
 `git diff --check`, artifact guard, two concurrent unit suites with spaced TMPDIR,
-and the byte-identical pack comparison. The full suite includes fake generation,
+and the byte-identical pack comparison. Tribunal's interpreter bridge returned
+valid bounded context and Relay's offline fixture generated successfully.
+
+The first hosted run (`38336649994`) exposed a test-cleanup compatibility difference:
+Kujo 1.2.2 `delete_file` refuses a symlink whose target is a directory, while local
+1.5.0 removes it. The cycle regression now uses argument-vector `rm` to unlink its
+own fixture, preserving the same assertion and the pinned CI runtime. This follow-up
+changes test cleanup only; product implementation and measurements remain at the
+ending implementation SHA above. The full suite includes fake generation,
 raw-response refusal/mode, symlink output, nested overwrite/pruning, recovery backup,
 config precedence, malformed response diagnostics, and JSON/quiet/help contracts.
 
